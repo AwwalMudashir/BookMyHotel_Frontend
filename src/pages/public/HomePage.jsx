@@ -1,3 +1,11 @@
-// Purpose: Public home landing page for the BookMyHotel experience.
-const HomePage = () => <div className="p-6">Home page</div>;
+import Navbar from '../../components/core/Navbar';
+import HomeHero from '../components/HomeHero';
+
+const HomePage = () => (
+  <div className="relative min-h-screen overflow-hidden bg-slate-50">
+    <Navbar variant="hero" />
+    <HomeHero />
+  </div>
+);
+
 export default HomePage;

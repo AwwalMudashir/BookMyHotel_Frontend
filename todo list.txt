@@ -1,0 +1,7 @@
+- [x] Replace the basic profile screen with a premium multi-section account settings experience.
+- [x] Add a personal information form with avatar, name, role badge, editable first/last name, read-only email, optional phone, and save handling.
+- [x] Add a password change section with show/hide toggles and password strength feedback.
+- [x] Add an eco rewards UI card with placeholder history items and no API call for now.
+- [x] Use Axios through a dedicated userApi module for profile and password updates.
+- [x] Use toast notifications for success and inline validation/error feedback.
+- [ ] Wire the eco reward points API once the backend endpoint is ready.

@@ -1,12 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import HomePage from '../pages/public/HomePage';
 import HotelListPage from '../pages/public/HotelListPage';
 import HotelDetailPage from '../pages/public/HotelDetailPage';
 import RoomDetailPage from '../pages/public/RoomDetailPage';
 import SearchPage from '../pages/public/SearchPage';
-import LoginPage from '../pages/public/LoginPage';
-import RegisterPage from '../pages/public/RegisterPage';
 import ContactPage from '../pages/public/ContactPage';
 import BookingFlowPage from '../pages/customer/BookingFlowPage';
 import PaymentPage from '../pages/customer/PaymentPage';
@@ -32,20 +29,17 @@ import CustomerRoute from './CustomerRoute';
 import ManagerRoute from './ManagerRoute';
 import AdminRoute from './AdminRoute';
 
-const AppRouter = () => {
-  const { isAuthenticated } = useAuth();
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/hotels" element={<HotelListPage />} />
-        <Route path="/hotels/:id" element={<HotelDetailPage />} />
-        <Route path="/rooms/:id" element={<RoomDetailPage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/contact" element={<ContactPage />} />
+const AppRouter = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/hotels" element={<HotelListPage />} />
+      <Route path="/hotels/:id" element={<HotelDetailPage />} />
+      <Route path="/rooms/:id" element={<RoomDetailPage />} />
+      <Route path="/search" element={<SearchPage />} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/register" element={<Navigate to="/" replace />} />
+      <Route path="/contact" element={<ContactPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/booking" element={<BookingFlowPage />} />
@@ -74,9 +68,10 @@ const AppRouter = () => {
           <Route path="/admin/promotions" element={<AdminPromotions />} />
           <Route path="/admin/reports/:hotelId" element={<AdminHotelReport />} />
         </Route>
-      </Routes>
-    </BrowserRouter>
-  );
-};
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  </BrowserRouter>
+);
 
 export default AppRouter;
