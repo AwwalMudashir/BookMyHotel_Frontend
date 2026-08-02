@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import authApi from '../api/authApi';
+import { refreshAccessToken } from '../api/axiosInstance';
 import { AUTH_STORAGE_KEYS } from '../utils/constants';
 import { decodeJwt } from '../utils/decodeJwt';
 
@@ -74,6 +75,7 @@ const normalizeUser = (source = {}, fallbackToken = '') => {
     lastName: source.lastName || source.last_name || '',
     role: source.role || payload?.role || 'GUEST',
     managedHotel: source.managedHotel || null,
+    ecoPoints: Number(source.ecoPoints ?? 0) || 0,
   };
 };
 
@@ -90,12 +92,24 @@ const getInitialAuthState = () => {
     };
   }
 
+  // The access token has lapsed, but a refresh token can still revive the
+  // session — keep it and let hydrateSession() spend it. Only a session with
+  // nothing left to spend gets wiped here.
+  if (storedRefreshToken) {
+    return {
+      user: null,
+      token: '',
+      refreshToken: storedRefreshToken,
+      isHydrated: false,
+    };
+  }
+
   clearStoredAuth();
   return {
     user: null,
     token: '',
     refreshToken: '',
-    isHydrated: false,
+    isHydrated: true,
   };
 };
 
@@ -149,9 +163,15 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
+  const loginWithGoogle = async (idToken) => {
+    const response = await authApi.googleLogin(idToken);
+    applySession(response, '', true);
+    return response;
+  };
+
   const refreshSession = async () => {
     const currentRefreshToken = refreshToken || getStoredValue(AUTH_STORAGE_KEYS.refreshToken);
-    if (!currentRefreshToken || isTokenExpired(currentRefreshToken)) {
+    if (!currentRefreshToken) {
       clearStoredAuth();
       setToken('');
       setRefreshToken('');
@@ -159,9 +179,13 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Session expired');
     }
 
-    const response = await authApi.refreshToken(currentRefreshToken);
-    applySession(response, token);
-    return response;
+    // Delegate to the shared single-flight refresh in axiosInstance so this
+    // never races against an interceptor-driven refresh.
+    const nextAccessToken = await refreshAccessToken();
+    setToken(nextAccessToken);
+    setRefreshToken(getStoredValue(AUTH_STORAGE_KEYS.refreshToken));
+    setUser((currentUser) => currentUser || normalizeUser({}, nextAccessToken));
+    return nextAccessToken;
   };
 
   const logout = async () => {
@@ -206,7 +230,11 @@ export const AuthProvider = ({ children }) => {
 
     const hydrateSession = async () => {
       const storedToken = getStoredValue(AUTH_STORAGE_KEYS.token);
-      if (!storedToken || isTokenExpired(storedToken)) {
+      const storedRefreshToken = getStoredValue(AUTH_STORAGE_KEYS.refreshToken);
+
+      // A stale access token is only fatal when there is no refresh token left:
+      // axiosInstance refreshes transparently on the /auth/me call below.
+      if ((!storedToken || isTokenExpired(storedToken)) && !storedRefreshToken) {
         clearStoredAuth();
         setToken('');
         setRefreshToken('');
@@ -217,8 +245,11 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await authApi.getCurrentUser();
-        setUser(normalizeUser(response, storedToken));
-        setToken(storedToken);
+        // The request may have rotated the tokens on its way out, so read back
+        // what is actually stored rather than what we captured above.
+        const activeToken = getStoredValue(AUTH_STORAGE_KEYS.token);
+        setUser(normalizeUser(response, activeToken));
+        setToken(activeToken);
         setRefreshToken(getStoredValue(AUTH_STORAGE_KEYS.refreshToken));
       } catch (error) {
         console.error('[AuthContext] unable to hydrate session', error);
@@ -240,8 +271,10 @@ export const AuthProvider = ({ children }) => {
     role: user?.role || 'GUEST',
     token,
     refreshToken,
+    isHydrated,
     isAuthenticated: Boolean(token && user && isHydrated && !isTokenExpired(token)),
     login,
+    loginWithGoogle,
     register,
     refreshSession,
     logout,

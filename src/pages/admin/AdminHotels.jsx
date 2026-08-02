@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Star, MapPin, Edit2, Eye, Trash2, Plus, RefreshCw } from 'lucide-react';
 import Navbar from '../../components/core/Navbar';
+import AdminNav from '../../components/admin/AdminNav';
 import hotelApi from '../../api/hotelApi';
+import adminApi from '../../api/adminApi';
 import Spinner from '../../components/core/Spinner';
 import HotelFormModal from '../../components/admin/HotelFormModal';
 
@@ -57,6 +59,8 @@ const AdminHotels = () => {
 			<Navbar />
 
 			<main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+				<AdminNav />
+
 				<div className="mb-6 flex items-center justify-between gap-4">
 					<div>
 						<h1 className="font-[Playfair_Display] text-2xl font-semibold">Hotel Management</h1>

@@ -1,27 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Building2, MapPin, Star, Tag } from 'lucide-react';
+import { useCurrency } from '../../hooks/useCurrency';
 
-const formatCurrency = (value) => {
-  if (value === null || value === undefined || value === '') return null;
-
-  if (typeof value === 'number') {
-    return `£${value}`;
-  }
-
-  const numericValue = Number(value);
-  if (!Number.isNaN(numericValue)) {
-    return `£${numericValue}`;
-  }
-
-  return value;
-};
-
-const getCheapestRoomPrice = (hotel) => {
+// Scans the hotel's nested rooms/branches for the lowest price, keeping each candidate's
+// own currency attached so the caller never has to guess what currency a number is in.
+const getCheapestRoomPriceInfo = (hotel) => {
   const candidates = [];
 
-  const visit = (value) => {
+  const visit = (value, inheritedCurrency) => {
     if (Array.isArray(value)) {
-      value.forEach(visit);
+      value.forEach((entry) => visit(entry, inheritedCurrency));
       return;
     }
 
@@ -29,36 +17,40 @@ const getCheapestRoomPrice = (hotel) => {
       return;
     }
 
-    if (typeof value.price === 'number') candidates.push(value.price);
-    if (typeof value.roomPrice === 'number') candidates.push(value.roomPrice);
-    if (typeof value.amount === 'number') candidates.push(value.amount);
-    if (typeof value.rate === 'number') candidates.push(value.rate);
+    const currency = value.currency || value.currencyCode || inheritedCurrency || null;
+    const priceCandidate = [value.price, value.roomPrice, value.amount, value.rate].find(
+      (candidate) => typeof candidate === 'number',
+    );
+    if (typeof priceCandidate === 'number') {
+      candidates.push({ price: priceCandidate, currency });
+    }
 
     if (Array.isArray(value.rooms)) {
-      value.rooms.forEach(visit);
+      value.rooms.forEach((room) => visit(room, currency));
     }
 
     if (Array.isArray(value.branches)) {
-      value.branches.forEach(visit);
+      value.branches.forEach((branch) => visit(branch, currency));
     }
   };
 
-  visit(hotel?.rooms);
-  visit(hotel?.branches);
+  visit(hotel?.rooms, hotel?.currency);
+  visit(hotel?.branches, hotel?.currency);
 
   if (candidates.length === 0) {
     return null;
   }
 
-  return Math.min(...candidates);
+  return candidates.reduce((cheapest, candidate) => (candidate.price < cheapest.price ? candidate : cheapest));
 };
 
 const HotelCard = ({ hotel }) => {
   const navigate = useNavigate();
+  const { format } = useCurrency();
   const hotelId = hotel?.id ?? hotel?.hotelId ?? hotel?.hotelID ?? hotel?.hotel_id ?? hotel?.slug ?? '';
   const imageUrl = hotel?.logoUrl || (Array.isArray(hotel?.images) ? hotel.images.find(Boolean) : hotel?.image ?? '');
   const branchCount = Array.isArray(hotel?.branches) ? hotel.branches.length : 0;
-  const price = getCheapestRoomPrice(hotel);
+  const cheapestRoom = getCheapestRoomPriceInfo(hotel);
   const rating = Number(hotel?.starRating ?? hotel?.rating ?? 0) || 0;
   const branchLabel = branchCount > 0 ? `${branchCount} ${branchCount === 1 ? 'branch' : 'branches'} across Asia & Europe` : 'Branches available';
 
@@ -120,7 +112,7 @@ const HotelCard = ({ hotel }) => {
 
         <div className="flex items-center gap-2 text-sm text-[#6B7280]">
           <Tag size={16} className="text-[#0A7C6E]" />
-          <span>{price ? `from ${formatCurrency(price)} / night` : 'View rooms for pricing'}</span>
+          <span>{cheapestRoom ? `from ${format(cheapestRoom.price, cheapestRoom.currency)} / night` : 'View rooms for pricing'}</span>
         </div>
 
         <button

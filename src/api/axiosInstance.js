@@ -63,20 +63,6 @@ const clearStoredAuth = () => {
 
 const isAuthRequest = (url = '') => /\/auth\/(login|register|refresh|logout|forgot-password|resend-otp|verify-otp)/.test(url);
 
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
-
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -84,17 +70,105 @@ const axiosInstance = axios.create({
   },
 });
 
-axiosInstance.interceptors.request.use((config) => {
-  const url = config?.url || '';
+// Dedicated bare client for /auth/refresh. It must NOT go through the
+// interceptors below, otherwise refreshing would recurse into itself.
+const refreshClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  const token = getStoredValue(AUTH_STORAGE_KEYS.token);
+let refreshPromise = null;
+let loggingOut = false;
+
+const forceLogout = (message = 'Your session has expired. Please log in again.') => {
+  clearStoredAuth();
+  if (loggingOut) return;
+  loggingOut = true;
+  toast.error(message);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth:logout'));
+  }
+  // Allow a fresh logout notice once the user has had a chance to sign in again.
+  setTimeout(() => { loggingOut = false; }, 1000);
+};
+
+/**
+ * Exchange the stored refresh token for a new access token.
+ *
+ * Single-flight: concurrent callers (parallel 401s, or several requests firing
+ * at once after the access token lapsed) all await the same in-flight request,
+ * so the server only ever sees one rotation and nobody races on a token that
+ * has already been rotated away.
+ */
+export const refreshAccessToken = () => {
+  if (refreshPromise) return refreshPromise;
+
+  const storedRefreshToken = getStoredValue(AUTH_STORAGE_KEYS.refreshToken);
+  if (!storedRefreshToken) {
+    return Promise.reject(new Error('No refresh token available'));
+  }
+
+  refreshPromise = refreshClient
+    .post('/auth/refresh', { refreshToken: storedRefreshToken })
+    .then(({ data }) => {
+      // /auth/refresh returns `accessToken`, /auth/login returns `token`.
+      const nextAccessToken = data?.accessToken || data?.token || data?.access_token || '';
+      const nextRefreshToken = data?.refreshToken || data?.refresh_token || storedRefreshToken;
+
+      if (!nextAccessToken) {
+        throw new Error('No access token returned from refresh endpoint');
+      }
+
+      setStoredValue(AUTH_STORAGE_KEYS.token, nextAccessToken);
+      setStoredValue(AUTH_STORAGE_KEYS.refreshToken, nextRefreshToken);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth:token-refreshed'));
+      }
+      return nextAccessToken;
+    })
+    .catch((error) => {
+      // Only a definitive rejection from the server kills the session. A network
+      // blip or a 5xx must not sign the user out — they can retry.
+      const status = error?.response?.status;
+      if (!status || (status >= 400 && status < 500)) {
+        forceLogout();
+      }
+      throw error;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+};
+
+axiosInstance.interceptors.request.use(async (config) => {
+  const url = config?.url || '';
+  config.headers = config.headers || {};
+
+  if (isAuthRequest(url)) {
+    delete config.headers.Authorization;
+    return config;
+  }
+
+  let token = getStoredValue(AUTH_STORAGE_KEYS.token);
+
+  // Access token has lapsed but the refresh token is still good: trade it in
+  // now rather than firing a request we already know will come back 401.
+  if ((!token || isTokenExpired(token)) && getStoredValue(AUTH_STORAGE_KEYS.refreshToken)) {
+    try {
+      token = await refreshAccessToken();
+    } catch {
+      token = '';
+    }
+  }
+
   if (token && !isTokenExpired(token)) {
-    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   } else {
-    // If no valid token is present, clear stored auth so subsequent logic is consistent
-    clearStoredAuth();
-    if (config.headers) delete config.headers.Authorization;
+    delete config.headers.Authorization;
   }
 
   return config;
@@ -106,66 +180,37 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
 
-    if (!originalRequest) {
+    if (!originalRequest || status !== 401 || isAuthRequest(originalRequest.url || '')) {
       return Promise.reject(error);
     }
 
-    const requestUrl = originalRequest.url || '';
-    const isAuthRouteRequest = isAuthRequest(requestUrl);
-
-    if (status === 401 && !isAuthRouteRequest && !originalRequest._retry) {
-      const refreshToken = getStoredValue(AUTH_STORAGE_KEYS.refreshToken);
-
-      if (!refreshToken) {
-        toast.error('You have to log in');
-        return Promise.reject(error);
-      }
-
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axiosInstance(originalRequest);
-          })
-          .catch((refreshError) => Promise.reject(refreshError));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const response = await axiosInstance.post('/auth/refresh', { refreshToken });
-        const nextAccessToken = response.data?.token || response.data?.accessToken || response.data?.access_token || '';
-        const nextRefreshToken = response.data?.refreshToken || response.data?.refresh_token || refreshToken;
-
-        if (!nextAccessToken) {
-          throw new Error('No access token returned from refresh endpoint');
-        }
-
-        setStoredValue(AUTH_STORAGE_KEYS.token, nextAccessToken);
-        setStoredValue(AUTH_STORAGE_KEYS.refreshToken, nextRefreshToken);
-        window.dispatchEvent(new Event('auth:token-refreshed'));
-        processQueue(null, nextAccessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        toast.error('You have to log in');
-        processQueue(refreshError, null);
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    if (status === 401 && !isAuthRouteRequest) {
-      toast.error('You have to log in');
+    // Already refreshed once for this request and it is still unauthorised —
+    // retrying again would loop.
+    if (originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    if (!getStoredValue(AUTH_STORAGE_KEYS.refreshToken)) {
+      // A 401 with no token on file at all is just a guest hitting a protected
+      // endpoint (e.g. browsing a room detail page anonymously) — not a session
+      // that expired. Only announce "you have to log in" when there was an
+      // access token to begin with, so anonymous browsing stays silent.
+      if (getStoredValue(AUTH_STORAGE_KEYS.token)) {
+        forceLogout('You have to log in');
+      }
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      const nextAccessToken = await refreshAccessToken();
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
+      return axiosInstance(originalRequest);
+    } catch (refreshError) {
+      return Promise.reject(refreshError);
+    }
   },
 );
 

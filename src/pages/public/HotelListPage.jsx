@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import Navbar from '../../components/core/Navbar';
 import HotelCard from '../../components/hotel/HotelCard';
 import hotelApi from '../../api/hotelApi';
+import Footer from '../../components/core/Footer';
 
 const HotelListPage = () => {
   const [hotels, setHotels] = useState([]);
@@ -98,6 +99,8 @@ const HotelListPage = () => {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 };

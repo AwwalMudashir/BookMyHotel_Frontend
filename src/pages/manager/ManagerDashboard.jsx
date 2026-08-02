@@ -1,7 +1,18 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import authApi from '../../api/authApi';
+
+const managerLinks = [
+	{ to: '/manager/property', label: 'Property' },
+	{ to: '/manager/rates', label: 'Rates' },
+	{ to: '/manager/availability', label: 'Availability' },
+	{ to: '/manager/services', label: 'Services' },
+	{ to: '/manager/promotions', label: 'Promotions' },
+	{ to: '/manager/opportunities', label: 'Opportunities' },
+	{ to: '/manager/reservations', label: 'Reservations' },
+];
 
 const ManagerDashboard = () => {
 	const { role } = useAuth();
@@ -58,7 +69,17 @@ const ManagerDashboard = () => {
 					</button>
 				</div>
 			) : (
-				<div className="mt-6 text-sm text-slate-600">You do not have permissions to create users.</div>
+				<div className="mt-6 flex flex-wrap gap-3">
+					{managerLinks.map(({ to, label }) => (
+						<Link
+							key={to}
+							to={to}
+							className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A2E] transition hover:border-[#0A7C6E] hover:text-[#0A7C6E]"
+						>
+							{label}
+						</Link>
+					))}
+				</div>
 			)}
 
 			{creating ? (

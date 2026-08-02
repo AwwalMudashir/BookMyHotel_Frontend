@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Eye, EyeOff, X } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import authApi from '../../api/authApi';
 import userApi from '../../api/userApi';
@@ -18,6 +19,7 @@ const AuthModal = ({
   onClose = () => {},
   initialMode = 'login',
   onSubmit = () => {},
+  onGoogleAuth = () => {},
   onForgotPassword = () => {},
   successMessage = '',
   imageUrl = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80',
@@ -29,6 +31,7 @@ const AuthModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [otpDigits, setOtpDigits] = useState(Array(6).fill(''));
   const [otpEntryId, setOtpEntryId] = useState(null);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
@@ -158,6 +161,27 @@ const AuthModal = ({
     setErrors({});
     setFeedback({ type: '', message: '' });
     setOtpDigits(Array(6).fill(''));
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    const idToken = credentialResponse?.credential;
+    if (!idToken) {
+      toast.error('Google sign-in failed. Please try again.');
+      return;
+    }
+
+    setGoogleSubmitting(true);
+    try {
+      await onGoogleAuth(idToken);
+    } catch (error) {
+      toast.error(error.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    toast.error('Google sign-in failed. Please try again.');
   };
 
   const handleForgotPasswordSubmit = async (event) => {
@@ -322,18 +346,18 @@ const AuthModal = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-3 py-4 backdrop-blur-sm sm:px-4 lg:px-6">
-      <div className="relative flex w-full max-w-4xl overflow-hidden rounded-[24px] border border-slate-200/70 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.22)]">
+      <div className="relative flex max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[24px] border border-slate-200/70 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.22)]">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+          className="absolute right-4 top-4 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
           aria-label="Close authentication modal"
         >
           <X size={18} />
         </button>
 
         <div className="hidden w-[38%] flex-shrink-0 md:block">
-          <div className="relative h-full min-h-[440px] overflow-hidden">
+          <div className="relative h-full overflow-hidden">
             <img src={imageUrl} alt="Luxury travel and hospitality illustration" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-br from-[#0A7C6E]/80 via-[#0A7C6E]/40 to-slate-950/70" />
             <div className="absolute inset-0 flex flex-col justify-end p-5 text-white sm:p-6">
@@ -350,16 +374,16 @@ const AuthModal = ({
           </div>
         </div>
 
-        <div className="flex-1 bg-white px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
-          <div className="mx-auto flex h-full max-w-md flex-col justify-center">
-            <div className="mb-5">
-              <p className="mb-3 inline-flex rounded-full bg-[#0A7C6E]/10 px-3 py-1 text-sm font-medium text-[#0A7C6E]">
+        <div className="flex-1 overflow-y-auto bg-white px-5 py-4 sm:px-6 sm:py-5 lg:px-7 lg:py-6">
+          <div className="mx-auto flex max-w-md flex-col">
+            <div className="mb-3">
+              <p className="mb-2 inline-flex rounded-full bg-[#0A7C6E]/10 px-3 py-1 text-sm font-medium text-[#0A7C6E]">
                 {step === 'forgot' ? 'Reset password' : step === 'otp' ? 'Verify email' : step === 'reset' ? 'Choose a new password' : mode === 'login' ? 'Welcome back' : 'Create your account'}
               </p>
               <h3 className="text-2xl font-semibold text-slate-900 sm:text-[1.55rem]">
                 {step === 'forgot' ? 'Enter your email' : step === 'otp' ? 'Enter the 6-digit code' : step === 'reset' ? 'Set a new password' : mode === 'login' ? 'Log in to your account' : 'Sign up for a new account'}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-1.5 text-sm leading-6 text-slate-600">
                 {step === 'forgot'
                   ? 'We will send a one-time password to your email so you can recover your account.'
                   : step === 'otp'
@@ -376,7 +400,7 @@ const AuthModal = ({
               <form className="space-y-3" onSubmit={handleForgotPasswordSubmit} noValidate>
                 {renderFeedback()}
                 <div>
-                  <label htmlFor="forgotEmail" className="mb-2 block text-sm font-medium text-slate-700">
+                  <label htmlFor="forgotEmail" className="mb-1.5 block text-sm font-medium text-slate-700">
                     Email address
                   </label>
                   <input
@@ -386,7 +410,7 @@ const AuthModal = ({
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="Enter your email address"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                   />
                   {errors.email && <p className="mt-2 text-sm text-rose-600">{errors.email}</p>}
                 </div>
@@ -394,7 +418,7 @@ const AuthModal = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? 'Sending OTP...' : 'Send OTP'}
                   <ArrowRight size={16} />
@@ -435,7 +459,7 @@ const AuthModal = ({
                   type="button"
                   onClick={handleOtpSubmit}
                   disabled={isSubmitting}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? 'Verifying...' : 'Verify OTP'}
                   <ArrowRight size={16} />
@@ -465,7 +489,7 @@ const AuthModal = ({
               <form className="space-y-3" onSubmit={handlePasswordResetSubmit} noValidate>
                 {renderFeedback()}
                 <div className="relative">
-                  <label htmlFor="resetPassword" className="mb-2 block text-sm font-medium text-slate-700">
+                  <label htmlFor="resetPassword" className="mb-1.5 block text-sm font-medium text-slate-700">
                     New password
                   </label>
                   <input
@@ -475,12 +499,12 @@ const AuthModal = ({
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Enter a new password"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-3 top-[42px] cursor-pointer text-slate-500 transition hover:text-slate-900"
+                    className="absolute right-3 top-[38px] cursor-pointer text-slate-500 transition hover:text-slate-900"
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -489,7 +513,7 @@ const AuthModal = ({
                 </div>
 
                 <div className="relative">
-                  <label htmlFor="resetConfirmPassword" className="mb-2 block text-sm font-medium text-slate-700">
+                  <label htmlFor="resetConfirmPassword" className="mb-1.5 block text-sm font-medium text-slate-700">
                     Confirm new password
                   </label>
                   <input
@@ -499,12 +523,12 @@ const AuthModal = ({
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="Re-enter your new password"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((current) => !current)}
-                    className="absolute right-3 top-[42px] cursor-pointer text-slate-500 transition hover:text-slate-900"
+                    className="absolute right-3 top-[38px] cursor-pointer text-slate-500 transition hover:text-slate-900"
                     aria-label="Toggle confirm password visibility"
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -515,7 +539,7 @@ const AuthModal = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? 'Resetting password...' : 'Reset password'}
                   <ArrowRight size={16} />
@@ -533,12 +557,30 @@ const AuthModal = ({
 
             {step === 'form' && (
               <>
-                <form className="space-y-2.5" onSubmit={handleSubmit} noValidate>
+                <div className="mb-3 flex flex-col items-center gap-2.5">
+                  <div className={googleSubmitting ? 'pointer-events-none opacity-60' : ''}>
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      text={mode === 'login' ? 'signin_with' : 'signup_with'}
+                      shape="pill"
+                      size="medium"
+                      width="320"
+                    />
+                  </div>
+                  <div className="flex w-full items-center gap-3">
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Or continue with email</span>
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+                </div>
+
+                <form className="space-y-2" onSubmit={handleSubmit} noValidate>
                   {renderFeedback()}
                   {mode === 'signup' && (
                     <div className="grid gap-2.5 sm:grid-cols-2">
                       <div>
-                        <label htmlFor="firstName" className="mb-2 block text-sm font-medium text-slate-700">
+                        <label htmlFor="firstName" className="mb-1.5 block text-sm font-medium text-slate-700">
                           First name
                         </label>
                         <input
@@ -548,12 +590,12 @@ const AuthModal = ({
                           value={formData.firstName}
                           onChange={handleChange}
                           placeholder="Cristiano"
-                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                         />
                         {errors.firstName && <p className="mt-2 text-sm text-rose-600">{errors.firstName}</p>}
                       </div>
                       <div>
-                        <label htmlFor="lastName" className="mb-2 block text-sm font-medium text-slate-700">
+                        <label htmlFor="lastName" className="mb-1.5 block text-sm font-medium text-slate-700">
                           Last name
                         </label>
                         <input
@@ -563,7 +605,7 @@ const AuthModal = ({
                           value={formData.lastName}
                           onChange={handleChange}
                           placeholder="Ronaldo"
-                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                         />
                         {errors.lastName && <p className="mt-2 text-sm text-rose-600">{errors.lastName}</p>}
                       </div>
@@ -571,7 +613,7 @@ const AuthModal = ({
                   )}
 
                   <div>
-                    <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-700">
+                    <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-slate-700">
                       Email address
                     </label>
                     <input
@@ -581,13 +623,13 @@ const AuthModal = ({
                       value={formData.email}
                       onChange={handleChange}
                       placeholder="Enter your email address"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                     />
                     {errors.email && <p className="mt-2 text-sm text-rose-600">{errors.email}</p>}
                   </div>
 
                   <div className="relative">
-                    <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">
+                    <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">
                       Password
                     </label>
                     <input
@@ -597,12 +639,12 @@ const AuthModal = ({
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="Enter a strong password"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((current) => !current)}
-                      className="absolute right-3 top-[42px] cursor-pointer text-slate-500 transition hover:text-slate-900"
+                      className="absolute right-3 top-[38px] cursor-pointer text-slate-500 transition hover:text-slate-900"
                       aria-label="Toggle password visibility"
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -612,7 +654,7 @@ const AuthModal = ({
 
                   {mode === 'signup' && (
                     <div className="relative">
-                      <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium text-slate-700">
+                      <label htmlFor="confirmPassword" className="mb-1.5 block text-sm font-medium text-slate-700">
                         Confirm password
                       </label>
                       <input
@@ -622,12 +664,12 @@ const AuthModal = ({
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         placeholder="Re-enter your password"
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword((current) => !current)}
-                        className="absolute right-3 top-[42px] cursor-pointer text-slate-500 transition hover:text-slate-900"
+                        className="absolute right-3 top-[38px] cursor-pointer text-slate-500 transition hover:text-slate-900"
                         aria-label="Toggle confirm password visibility"
                       >
                         {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -665,14 +707,14 @@ const AuthModal = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex w-full items-center cursor-pointer justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="flex w-full items-center cursor-pointer justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A7C6E]/90 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {isSubmitting ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : (mode === 'login' ? 'Log in' : 'Create account')}
                     <ArrowRight size={16} />
                   </button>
                 </form>
 
-                <div className="mt-6 text-center text-sm text-slate-600">
+                <div className="mt-4 text-center text-sm text-slate-600">
                   {mode === 'login' ? (
                     <>
                       Don&apos;t have an account?{' '}

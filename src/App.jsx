@@ -1,22 +1,30 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import AppRouter from './routes/AppRouter';
 import './App.css';
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function App() {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BookingProvider>
-          <Toaster position="top-right" />
-          <AppRouter />
-        </BookingProvider>
-      </AuthProvider>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <AuthProvider>
+          <CurrencyProvider>
+            <BookingProvider>
+              <Toaster position="top-right" />
+              <AppRouter />
+            </BookingProvider>
+          </CurrencyProvider>
+        </AuthProvider>
+      </GoogleOAuthProvider>
     </QueryClientProvider>
   );
 }

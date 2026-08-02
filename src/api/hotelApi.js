@@ -7,9 +7,19 @@ const normalizeBranch = (payload) => {
 
   return {
     id: payload.id ?? payload.branchId ?? payload.branchID ?? null,
+    hotelId: payload.hotelId ?? payload.hotelID ?? null,
+    hotelName: payload.hotelName ?? null,
+    name: payload.name ?? '',
     city: payload.city ?? payload.location ?? payload.address ?? '',
     country: payload.country ?? '',
     address: payload.address ?? '',
+    currency: payload.currency ?? payload.currencyCode ?? null,
+    checkInTime: payload.checkInTime ?? null,
+    checkOutTime: payload.checkOutTime ?? null,
+    // Admin-set only, not derived from anything — same status as starRating.
+    ecoCertified: Boolean(payload.ecoCertified),
+    ecoTags: Array.isArray(payload.ecoTags) ? payload.ecoTags : [],
+    ecoScore: payload.ecoScore ?? null,
   };
 };
 
@@ -41,6 +51,7 @@ const normalizeHotel = (payload) => {
     name: payload?.name ?? payload?.hotelName ?? payload?.title ?? 'Luxury Hotel',
     description: payload?.description ?? payload?.about ?? 'A refined stay designed for comfort and convenience.',
     starRating: Number(payload?.starRating ?? payload?.rating ?? payload?.averageRating ?? payload?.stars ?? 0) || 0,
+    currency: payload?.currency ?? payload?.currencyCode ?? firstBranch?.currency ?? null,
     logoUrl: payload?.logoUrl ?? payload?.imageUrl ?? payload?.image ?? '',
     images: Array.isArray(payload?.images) ? payload.images : payload?.logoUrl ? [payload.logoUrl] : [],
     branches: normalizedBranches,
@@ -92,6 +103,14 @@ const hotelApi = {
     return Array.isArray(response.data) ? response.data.map(normalizeBranch).filter(Boolean) : [];
   },
 
+  // Full branch detail — the only endpoint documented to carry ecoCertified/ecoTags/ecoScore.
+  async getBranchById(id) {
+    console.info('[hotelApi] getBranchById request', { id });
+    const response = await axiosInstance.get(`/branch/${id}`);
+    console.info('[hotelApi] getBranchById response', response.data);
+    return normalizeBranch(response.data);
+  },
+
   async getBranchRooms(branchId) {
     console.info('[hotelApi] getBranchRooms request', { branchId });
     const response = await axiosInstance.get(`/branch/${branchId}/rooms`);
@@ -99,12 +118,6 @@ const hotelApi = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
-  async getBranchReviews(branchId) {
-    console.info('[hotelApi] getBranchReviews request', { branchId });
-    const response = await axiosInstance.get(`/branch/${branchId}/reviews`);
-    console.info('[hotelApi] getBranchReviews response', response.data);
-    return Array.isArray(response.data) ? response.data : [];
-  },
 };
 
 export default hotelApi;

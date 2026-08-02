@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Hotel, Compass, Mail, Menu, Sparkles, X, LogIn, LogOut, UserCircle, LayoutGrid } from 'lucide-react';
+import { Home, Hotel, Compass, Mail, Menu, Sparkles, X, LogIn, LogOut, UserCircle, LayoutGrid, Leaf } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AuthModal from './AuthModal';
+import CurrencySwitcher from './CurrencySwitcher';
 import { useAuth } from '../../hooks/useAuth';
 
 const guestLinks = [
@@ -17,6 +18,7 @@ const linkBaseClasses = 'flex items-center gap-2 rounded-full px-3 py-2 text-sm 
 const Navbar = ({ variant = 'default' }) => {
   const {
     login: loginUser,
+    loginWithGoogle,
     register: registerUser,
     user,
     role,
@@ -142,6 +144,15 @@ const Navbar = ({ variant = 'default' }) => {
     }
   };
 
+  const handleGoogleAuth = async (idToken) => {
+    const response = await loginWithGoogle(idToken);
+    const roleName = response?.role || 'GUEST';
+    setAuthSuccessMessage('');
+    toast.success('Signed in with Google');
+    redirectByRole(roleName);
+    setAuthOpen(false);
+  };
+
   const handleLogout = async () => {
     try {
       await logoutUser();
@@ -205,8 +216,18 @@ const Navbar = ({ variant = 'default' }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <CurrencySwitcher buttonClassName={secondaryButtonClasses} />
             {isAuthenticated ? (
               <>
+                {role === 'CUSTOMER' ? (
+                  <span
+                    className={`hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium sm:inline-flex ${shouldUseSolidBg ? 'bg-[#E2F0E8] text-[#1D6A2D]' : 'bg-white/15 text-white'}`}
+                    title="Eco points earned from eco-friendly stays"
+                  >
+                    <Leaf size={14} />
+                    {user?.ecoPoints ?? 0}
+                  </span>
+                ) : null}
                 <span className={`hidden rounded-full px-3 py-2 text-sm font-medium sm:inline-flex ${shouldUseSolidBg ? 'bg-[#0A7C6E]/10 text-[#0A7C6E]' : 'bg-white/15 text-white'}`}>
                   Hi, {user?.firstName || 'Traveler'}
                 </span>
@@ -361,6 +382,7 @@ const Navbar = ({ variant = 'default' }) => {
         }}
         initialMode={authMode}
         onSubmit={handleAuthSubmit}
+        onGoogleAuth={handleGoogleAuth}
         onForgotPassword={() => {
           console.info('Forgot password flow triggered');
         }}

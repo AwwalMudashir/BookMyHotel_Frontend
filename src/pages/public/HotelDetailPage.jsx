@@ -1,30 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Building2, MapPin, Star, Tag, Leaf, Users, MessageCircleMore, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin, Star, Leaf, RefreshCw } from 'lucide-react';
 import Navbar from '../../components/core/Navbar';
+import Footer from '../../components/core/Footer';
 import hotelApi from '../../api/hotelApi';
 import RoomCard from '../../components/hotel/RoomCard';
-import ReviewCard from '../../components/hotel/ReviewCard';
-import { useAuthContext } from '../../context/AuthContext';
-import reviewApi from '../../api/reviewApi';
+import ReviewList from '../../components/hotel/ReviewList';
+import ActiveOffers from '../../components/hotel/ActiveOffers';
 
 const HotelDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
   const [hotel, setHotel] = useState(null);
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [rooms, setRooms] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [visibleReviews, setVisibleReviews] = useState(3);
   const [loading, setLoading] = useState(true);
   const [branchLoading, setBranchLoading] = useState(false);
-  const [reviewLoading, setReviewLoading] = useState(false);
   const [error, setError] = useState('');
   const [showFullDescription, setShowFullDescription] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewForm, setReviewForm] = useState({ rating: '5', comment: '' });
 
   useEffect(() => {
     const loadHotel = async () => {
@@ -55,43 +49,26 @@ const HotelDetailPage = () => {
 
       setBranchLoading(true);
       try {
-        const roomData = await hotelApi.getBranchRooms(selectedBranch.id);
+        const [roomData, fullBranch] = await Promise.all([
+          hotelApi.getBranchRooms(selectedBranch.id),
+          // The branches-list endpoint may be a lighter DTO — fetch full detail to guarantee
+          // ecoCertified/ecoTags/ecoScore are present rather than assuming the list has them.
+          hotelApi.getBranchById(selectedBranch.id).catch(() => null),
+        ]);
         setRooms(roomData);
-        setVisibleReviews(3);
-        setReviewLoading(true);
-        const reviewData = await hotelApi.getBranchReviews(selectedBranch.id);
-        setReviews(reviewData);
-      } catch (err) {
+        if (fullBranch) {
+          setBranches((current) => current.map((branch) => (branch.id === fullBranch.id ? fullBranch : branch)));
+          setSelectedBranch(fullBranch);
+        }
+      } catch {
         setRooms([]);
-        setReviews([]);
       } finally {
         setBranchLoading(false);
-        setReviewLoading(false);
       }
     };
 
     loadBranchDetails();
-  }, [selectedBranch]);
-
-  const handleReviewSubmit = async (event) => {
-    event.preventDefault();
-
-    try {
-      await reviewApi.submitReview({
-        branchId: selectedBranch?.id,
-        rating: Number(reviewForm.rating),
-        comment: reviewForm.comment,
-      });
-      setShowReviewModal(false);
-      setReviewForm({ rating: '5', comment: '' });
-      if (selectedBranch?.id) {
-        const reviewData = await hotelApi.getBranchReviews(selectedBranch.id);
-        setReviews(reviewData);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  }, [selectedBranch?.id]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
@@ -144,8 +121,6 @@ const HotelDetailPage = () => {
                       <Star size={16} className="text-[#C9A84C]" fill="#C9A84C" />
                       <span>{Number(hotel.starRating || 0).toFixed(1)}</span>
                     </div>
-                    <span className="h-1 w-1 rounded-full bg-white/40" />
-                    <span>{reviews.length || 0} reviews</span>
                   </div>
                 </div>
               </div>
@@ -177,10 +152,12 @@ const HotelDetailPage = () => {
                       <p className="text-sm font-semibold text-[#1A1A2E]">{selectedBranch.city || 'Selected branch'}</p>
                       <p className="mt-1 text-sm text-[#6B7280]">{selectedBranch.country}</p>
                     </div>
-                    <div className="flex items-center gap-2 rounded-full bg-[#E6F5F3] px-3 py-1 text-sm font-medium text-[#0A7C6E]">
-                      <Leaf size={14} />
-                      Eco-certified property
-                    </div>
+                    {selectedBranch.ecoCertified ? (
+                      <div className="flex items-center gap-2 rounded-full bg-[#E6F5F3] px-3 py-1 text-sm font-medium text-[#0A7C6E]">
+                        <Leaf size={14} />
+                        Eco-certified property
+                      </div>
+                    ) : null}
                   </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] p-4">
@@ -189,16 +166,43 @@ const HotelDetailPage = () => {
                     </div>
                     <div className="rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6B7280]">Check-in</p>
-                      <p className="mt-2 text-sm text-[#1A1A2E]">From 15:00</p>
+                      <p className="mt-2 text-sm text-[#1A1A2E]">From {selectedBranch.checkInTime?.slice(0, 5) || '15:00'}</p>
                     </div>
                     <div className="rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6B7280]">Check-out</p>
-                      <p className="mt-2 text-sm text-[#1A1A2E]">By 12:00</p>
+                      <p className="mt-2 text-sm text-[#1A1A2E]">By {selectedBranch.checkOutTime?.slice(0, 5) || '11:00'}</p>
                     </div>
                   </div>
+
+                  {(selectedBranch.ecoTags?.length > 0 || selectedBranch.ecoScore != null) ? (
+                    <div className="mt-4 rounded-2xl border border-[#DCEFEA] bg-[#F7FCF8] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#1D6A2D]">
+                          <Leaf size={13} />
+                          Sustainability
+                        </p>
+                        {selectedBranch.ecoScore != null ? (
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#1D6A2D]">
+                            Sustainability score: {selectedBranch.ecoScore}/100
+                          </span>
+                        ) : null}
+                      </div>
+                      {selectedBranch.ecoTags?.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {selectedBranch.ecoTags.map((tag) => (
+                            <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#1D6A2D]">
+                              {tag.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </section>
+
+            <ActiveOffers hotelId={hotel.id} />
 
             <section className="rounded-[32px] border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
               <div className="mb-6 flex items-center justify-between gap-3">
@@ -215,54 +219,23 @@ const HotelDetailPage = () => {
                 </div>
               ) : (
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {rooms.map((room) => (
-                    <RoomCard key={room?.id ?? room?.roomId ?? room?.roomID ?? `${room?.type}-${Math.random()}`} room={room} />
+                  {rooms.map((room, index) => (
+                    <RoomCard key={room?.id ?? room?.roomId ?? room?.roomID ?? `room-${index}`} room={room} />
                   ))}
                 </div>
               )}
             </section>
 
-            <section className="rounded-[32px] border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="font-[Playfair_Display] text-2xl font-semibold text-[#1A1A2E]">Guest reviews</h2>
-                  <p className="mt-1 text-sm text-[#6B7280]">What guests said about their stay.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-[#E6F5F3] px-4 py-2 text-sm font-semibold text-[#0A7C6E]">
-                    {reviews.length ? `${(reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length).toFixed(1)} ★` : '0.0 ★'}
-                  </div>
-                  {user?.role === 'CUSTOMER' ? (
-                    <button type="button" onClick={() => setShowReviewModal(true)} className="flex cursor-pointer items-center gap-2 rounded-full border border-[#0A7C6E] px-4 py-2 text-sm font-semibold text-[#0A7C6E] transition hover:bg-[#E6F5F3]">
-                      <MessageCircleMore size={16} />
-                      Write a review
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-
-              {reviewLoading ? (
-                <div className="mt-6 rounded-[24px] border border-[#E5E7EB] bg-[#F8F9FA] p-6 text-sm text-[#6B7280]">Loading reviews...</div>
-              ) : reviews.length === 0 ? (
-                <div className="mt-6 rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#F8F9FA] p-8 text-center text-sm text-[#6B7280]">
-                  No reviews yet for this branch.
-                </div>
-              ) : (
-                <div className="mt-6 grid gap-4">
-                  {reviews.slice(0, visibleReviews).map((review) => (
-                    <ReviewCard key={review?.id ?? `${review?.reviewerName}-${Math.random()}`} review={review} />
-                  ))}
-                  {visibleReviews < reviews.length ? (
-                    <button type="button" onClick={() => setVisibleReviews((current) => current + 3)} className="mx-auto mt-2 inline-flex cursor-pointer items-center rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#0A7C6E] transition hover:bg-[#E6F5F3]">
-                      Load more
-                    </button>
-                  ) : null}
-                </div>
-              )}
-            </section>
+            {selectedBranch ? (
+              <section className="rounded-[32px] border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
+                <ReviewList key={selectedBranch.id} branchId={selectedBranch.id} />
+              </section>
+            ) : null}
           </div>
         ) : null}
       </main>
+
+      <Footer/>
     </div>
   );
 };

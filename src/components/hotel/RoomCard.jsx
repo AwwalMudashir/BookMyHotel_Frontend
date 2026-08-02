@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Users } from 'lucide-react';
+import { useCurrency } from '../../hooks/useCurrency';
+import RoomTagBadges from './RoomTagBadges';
 
 const RoomCard = ({ room }) => {
   const navigate = useNavigate();
+  const { format } = useCurrency();
   const amenities = Array.isArray(room?.amenities) ? room.amenities : [];
   const visibleAmenities = amenities.slice(0, 4);
   const extraAmenities = amenities.length - visibleAmenities.length;
@@ -15,6 +18,8 @@ const RoomCard = ({ room }) => {
           <p className="mt-2 text-sm leading-6 text-[#6B7280] line-clamp-2">{room?.description || 'Comfortable accommodation with thoughtful amenities.'}</p>
         </div>
       </div>
+
+      {room?.tags?.length > 0 ? <RoomTagBadges tags={room.tags} className="mt-3" /> : null}
 
       <div className="mt-4 flex items-center gap-2 text-sm text-[#6B7280]">
         <Users size={16} className="text-[#0A7C6E]" />
@@ -32,8 +37,10 @@ const RoomCard = ({ room }) => {
 
       <div className="mt-6 flex items-end justify-between gap-3">
         <div>
-          <p className="text-2xl font-semibold text-[#0A7C6E]">{room?.price ? `£${room.price}` : 'Contact us'}</p>
-          <p className="text-sm text-[#6B7280]">{room?.currencyCode || 'GBP'} / night</p>
+          <p className="text-2xl font-semibold text-[#0A7C6E]">
+            {typeof room?.price === 'number' ? format(room.price, room?.currencyCode || room?.currency) : 'Contact us'}
+          </p>
+          <p className="text-sm text-[#6B7280]">/ night</p>
         </div>
         <button
           type="button"

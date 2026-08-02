@@ -435,33 +435,19 @@ const ProfilePage = () => {
                                         <Leaf className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0A7C6E]">Eco Reward Points</p>
-                                        <h3 className="text-2xl font-semibold text-slate-900">1,240</h3>
+                                        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0A7C6E]">Eco reward points</p>
+                                        <h3 className="text-2xl font-semibold text-slate-900">{profile?.ecoPoints ?? user?.ecoPoints ?? 0}</h3>
                                     </div>
                                 </div>
 
-                                <p className="mt-4 text-sm font-medium text-slate-700">Earn points every time you book an eco-certified hotel. Redeem them at checkout for discounts and free perks.</p>
+                                <p className="mt-4 text-sm font-medium text-slate-700">
+                                    You earn points automatically whenever a booking at an eco-friendly room is confirmed — the more sustainable
+                                    stays you book, the higher this total climbs.
+                                </p>
 
-                                <div className="mt-6 space-y-4">
-                                    {[
-                                        { title: 'Booked eco-certified room at Hilton Paris', amount: '+50 points', date: 'May 16, 2026' },
-                                        { title: 'Redeemed points at checkout', amount: '-20 points', date: 'May 10, 2026' },
-                                    ].map((item) => (
-                                        <div key={item.title} className="flex gap-3 rounded-2xl bg-white/70 p-4">
-                                            <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#0A7C6E]" />
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                                                    <span className="text-sm font-semibold text-[#0A7C6E]">{item.amount}</span>
-                                                </div>
-                                                <p className="mt-1 text-sm text-slate-500">{item.date}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="mt-6 rounded-2xl border border-[#D9EBDD] bg-[#F7FCF8] px-4 py-3 text-sm italic text-slate-600">
-                                    Keep booking sustainably to unlock more rewards.
+                                <div className="mt-6 rounded-2xl border border-[#D9EBDD] bg-[#F7FCF8] px-4 py-3 text-sm text-slate-600">
+                                    This is a running score, not a balance to spend — there's nothing to redeem it for yet. Look out for the
+                                    "Eco-friendly" tag on room listings to keep earning.
                                 </div>
                             </div>
                         </div>

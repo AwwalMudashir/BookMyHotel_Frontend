@@ -1,5 +1,7 @@
-import { Calendar, MapPin, DollarSign } from 'lucide-react';
+import { Calendar, MapPin } from 'lucide-react';
 import { addDays, differenceInDays, format, isValid, parseISO } from 'date-fns';
+import { useCurrency } from '../../hooks/useCurrency';
+import { ROOM_TAG_OPTIONS } from '../../utils/roomTags';
 
 const roomTypes = ['Standard', 'Deluxe', 'Suite', 'Presidential Suite'];
 const occupancyOptions = [1, 2, 3, 4, 5, 6];
@@ -48,6 +50,7 @@ const Section = ({ title, children }) => (
 );
 
 const FilterPanel = ({ filters, onFilterChange, onClear }) => {
+  const { symbol } = useCurrency();
   const checkInDate  = filters.checkIn  ? parseISO(filters.checkIn)  : null;
   const checkOutDate = filters.checkOut ? parseISO(filters.checkOut) : null;
   const nights = isValid(checkInDate) && isValid(checkOutDate)
@@ -131,7 +134,7 @@ const FilterPanel = ({ filters, onFilterChange, onClear }) => {
             <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Min</span>
             <div className="flex items-center rounded-xl border border-[#E5E7EB] bg-white shadow-sm transition focus-within:border-[#0A7C6E] focus-within:ring-2 focus-within:ring-[#0A7C6E]/15">
               <span className="flex h-full items-center rounded-l-xl border-r border-[#E5E7EB] bg-[#F8F9FA] px-2.5 py-2.5 text-xs font-bold text-[#0A7C6E]">
-                £
+                {symbol}
               </span>
               <input
                 type="number"
@@ -150,7 +153,7 @@ const FilterPanel = ({ filters, onFilterChange, onClear }) => {
             <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Max</span>
             <div className="flex items-center rounded-xl border border-[#E5E7EB] bg-white shadow-sm transition focus-within:border-[#0A7C6E] focus-within:ring-2 focus-within:ring-[#0A7C6E]/15">
               <span className="flex h-full items-center rounded-l-xl border-r border-[#E5E7EB] bg-[#F8F9FA] px-2.5 py-2.5 text-xs font-bold text-[#0A7C6E]">
-                £
+                {symbol}
               </span>
               <input
                 type="number"
@@ -201,8 +204,8 @@ const FilterPanel = ({ filters, onFilterChange, onClear }) => {
         </div>
         {/* Range labels */}
         <div className="mt-2 flex justify-between text-[11px] text-slate-400">
-          <span>£0</span>
-          <span>£5,000</span>
+          <span>{symbol}0</span>
+          <span>{symbol}5,000</span>
         </div>
       </Section>
 
@@ -240,6 +243,31 @@ const FilterPanel = ({ filters, onFilterChange, onClear }) => {
             );
           })}
         </div>
+      </Section>
+
+      {/* ── STAY TYPE ───────────────────────────────────────────────────────── */}
+      <Section title="Stay type">
+        <div className="flex flex-wrap gap-2">
+          {ROOM_TAG_OPTIONS.map(({ value, label, icon: Icon }) => {
+            const active = filters.tag === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onFilterChange('tag', active ? '' : value)}
+                className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
+                  active
+                    ? 'border-[#0A7C6E] bg-[#E6F5F3] text-[#0A7C6E]'
+                    : 'border-[#E5E7EB] bg-white text-slate-600 hover:border-[#0A7C6E]/40'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-slate-400">Pick one — these highlight different kinds of stays.</p>
       </Section>
 
       {/* ── GUESTS ──────────────────────────────────────────────────────────── */}

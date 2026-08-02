@@ -1,8 +1,10 @@
 import axiosInstance from './axiosInstance';
-import { AUTH_STORAGE_KEYS } from '../utils/constants';
+import { parseApiError } from '../utils/parseApiError';
 
 const normalizeError = (error) => {
-  const message = error.response?.data?.message || error.response?.data?.error || error.message || 'Request failed';
+  // Business-rule errors here can arrive as plain text (e.g. the inactive-account
+  // message) or as JSON { status, message } — parseApiError handles both.
+  const message = parseApiError(error, error.message || 'Request failed');
   const err = new Error(message);
   err.status = error.response?.status;
   return err;
@@ -25,6 +27,17 @@ const authApi = {
     try {
       const response = await axiosInstance.post('/auth/login', payload);
       console.info('[authApi] login response', response.data);
+      return response.data;
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  },
+
+  async googleLogin(idToken) {
+    console.info('[authApi] google login request');
+    try {
+      const response = await axiosInstance.post('/auth/google', { idToken });
+      console.info('[authApi] google login response', response.data);
       return response.data;
     } catch (error) {
       throw normalizeError(error);
@@ -56,12 +69,9 @@ const authApi = {
   async getCurrentUser() {
     console.info('[authApi] get current user request');
     try {
-      const token = typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_STORAGE_KEYS.token) || '' : '';
-      const response = await axiosInstance.get('/auth/me', {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      });
+      // Let the request interceptor supply the token: it also reads sessionStorage
+      // and refreshes a lapsed access token before the call goes out.
+      const response = await axiosInstance.get('/auth/me');
       console.info('[authApi] get current user response', response.data);
       return response.data;
     } catch (error) {

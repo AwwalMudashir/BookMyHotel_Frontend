@@ -33,7 +33,7 @@ const ReviewCard = ({ review }) => {
             </div>
             {review?.createdAt ? <p className="text-sm text-[#6B7280]">{formatDate(review.createdAt)}</p> : null}
           </div>
-          <p className="mt-3 text-sm leading-7 text-[#6B7280]">{review?.comment || review?.message || 'A thoughtful review from a guest.'}</p>
+          {review?.comment ? <p className="mt-3 text-sm leading-7 text-[#6B7280]">{review.comment}</p> : null}
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import SearchPage from '../pages/public/SearchPage';
 import ContactPage from '../pages/public/ContactPage';
 import BookingFlowPage from '../pages/customer/BookingFlowPage';
 import PaymentPage from '../pages/customer/PaymentPage';
+import PaymentReturnPage from '../pages/customer/PaymentReturnPage';
 import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import ProfilePage from '../pages/customer/ProfilePage';
 import ReviewPage from '../pages/customer/ReviewPage';
@@ -17,6 +18,7 @@ import ManagerAvailability from '../pages/manager/ManagerAvailability';
 import ManagerServices from '../pages/manager/ManagerServices';
 import ManagerOpportunities from '../pages/manager/ManagerOpportunities';
 import ManagerReservations from '../pages/manager/ManagerReservations';
+import ManagerPromotions from '../pages/manager/ManagerPromotions';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminHotels from '../pages/admin/AdminHotels';
 import AdminBranches from '../pages/admin/AdminBranches';
@@ -43,7 +45,8 @@ const AppRouter = () => (
 
         <Route element={<ProtectedRoute />}>
           <Route path="/booking" element={<BookingFlowPage />} />
-          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/payment/:bookingId" element={<PaymentPage />} />
+          <Route path="/bookings/:bookingId/payment-return" element={<PaymentReturnPage />} />
           <Route path="/my-bookings" element={<MyBookingsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/review/:branchId" element={<ReviewPage />} />
@@ -57,6 +60,7 @@ const AppRouter = () => (
           <Route path="/manager/services" element={<ManagerServices />} />
           <Route path="/manager/opportunities" element={<ManagerOpportunities />} />
           <Route path="/manager/reservations" element={<ManagerReservations />} />
+          <Route path="/manager/promotions" element={<ManagerPromotions />} />
         </Route>
 
         <Route element={<AdminRoute />}>

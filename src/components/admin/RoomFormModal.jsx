@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import roomApi from '../../api/roomApi';
+import { ROOM_TAG_OPTIONS } from '../../utils/roomTags';
 
 const roomTypes = ['Standard', 'Deluxe', 'Suite', 'Presidential Suite'];
 const currencies = ['GBP', 'USD', 'EUR', 'JPY', 'SGD', 'THB', 'HKD', 'SAR', 'TRY', 'AED'];
@@ -15,6 +16,7 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
   const [currency, setCurrency] = useState(room?.currency || 'GBP');
   const [amenityInput, setAmenityInput] = useState('');
   const [amenities, setAmenities] = useState(Array.isArray(room?.amenities) ? room.amenities : []);
+  const [tags, setTags] = useState(Array.isArray(room?.tags) ? room.tags : []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,6 +56,10 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
     setAmenities((current) => current.filter((item) => item !== value));
   };
 
+  const toggleTag = (value) => {
+    setTags((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
+  };
+
   const validate = () => {
     if (!type) {
       setError('Room type is required.');
@@ -84,6 +90,7 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
         price: Number(price),
         currency,
         amenities,
+        tags,
         branchId,
       };
 
@@ -211,6 +218,27 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
                   </span>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Stay tags</label>
+            <div className="flex flex-col gap-2">
+              {ROOM_TAG_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-[#0A7C6E]/40"
+                >
+                  <input
+                    type="checkbox"
+                    checked={tags.includes(value)}
+                    onChange={() => toggleTag(value)}
+                    className="h-4 w-4 cursor-pointer accent-[#0A7C6E]"
+                  />
+                  <Icon className="h-4 w-4 text-[#0A7C6E]" />
+                  {label}
+                </label>
+              ))}
             </div>
           </div>
 
