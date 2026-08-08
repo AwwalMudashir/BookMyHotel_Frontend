@@ -23,7 +23,7 @@ const CurrencySwitcher = ({ buttonClassName = '' }) => {
   const activeCountry = findCountryConfig(country);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative overflow-visible z-[9999]" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
@@ -38,7 +38,7 @@ const CurrencySwitcher = ({ buttonClassName = '' }) => {
       {open ? (
         <div
           role="listbox"
-          className="absolute right-0 top-full z-5000 mt-2 max-h-80 w-64 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 text-slate-900 shadow-xl"
+          className="fixed left-1/2 top-[4.5rem] z-[9999] mx-auto mt-0 max-h-80 w-[min(90vw,16rem)] -translate-x-1/2 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 text-slate-900 shadow-xl md:absolute md:left-auto md:right-0 md:top-full md:translate-x-0 md:mt-2 md:w-64"
         >
           {countryCurrencyConfig.map((entry) => {
             const isActive = entry.code === country;

@@ -2,8 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { format, parseISO, subDays } from 'date-fns';
 import { ArrowLeft, BedDouble, Coins, Leaf, TrendingUp } from 'lucide-react';
-import Navbar from '../../components/core/Navbar';
-import AdminNav from '../../components/admin/AdminNav';
+
+const formatUsd = (value) => {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+};
+import AdminLayout from '../../components/admin/AdminLayout';
 import KpiCard from '../../components/admin/KpiCard';
 import Spinner from '../../components/core/Spinner';
 import analyticsApi from '../../api/analyticsApi';
@@ -99,11 +107,8 @@ const AdminHotelReport = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-      <Navbar />
-
-      <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <AdminNav />
+    <AdminLayout>
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 
         <Link to="/admin/dashboard" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] transition hover:text-[#0A7C6E]">
           <ArrowLeft className="h-4 w-4" />
@@ -150,12 +155,12 @@ const AdminHotelReport = () => {
           <div className="grid gap-4 sm:grid-cols-3">
             <KpiCard label="Room nights booked" value={(summary?.roomNightsBooked ?? 0).toLocaleString()} icon={BedDouble} />
             <KpiCard
-              label="Revenue"
-              value={formatMoney(summary?.revenue)}
+              label="Revenue (USD)"
+              value={formatUsd(summary?.revenue)}
               icon={Coins}
-              hint={currency ? undefined : "This hotel's branches use different currencies — figure isn't converted, treat as approximate."}
+              hint="Converted to USD using live exchange rates."
             />
-            <KpiCard label="Average daily rate" value={formatMoney(summary?.averageDailyRate)} icon={TrendingUp} />
+            <KpiCard label="Average daily rate (USD)" value={formatUsd(summary?.averageDailyRate)} icon={TrendingUp} />
           </div>
         )}
 
@@ -237,8 +242,8 @@ const AdminHotelReport = () => {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

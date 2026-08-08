@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AlertTriangle, RefreshCw, X } from 'lucide-react';
-import Navbar from '../../components/core/Navbar';
-import AdminNav from '../../components/admin/AdminNav';
+import AdminLayout from '../../components/admin/AdminLayout';
 import ReservationTable from '../../components/admin/ReservationTable';
 import Pagination from '../../components/core/Pagination';
 import Spinner from '../../components/core/Spinner';
@@ -35,6 +34,7 @@ const AdminReservations = () => {
   const [hotelId, setHotelId] = useState('');
   const [date, setDate] = useState('');
   const [status, setStatus] = useState('');
+  const [referenceQuery, setReferenceQuery] = useState('');
   const [page, setPage] = useState(0);
 
   const [bookings, setBookings] = useState([]);
@@ -115,13 +115,17 @@ const AdminReservations = () => {
   };
 
   const activeActionCopy = pendingAction ? actionCopy[pendingAction.nextStatus] : null;
+  const filteredBookings = bookings.filter((booking) => {
+    const normalizedQuery = referenceQuery.trim().toLowerCase();
+    if (!normalizedQuery) return true;
+
+    const reference = (booking.reference || `BK-${booking.id || ''}`).toLowerCase();
+    return reference.includes(normalizedQuery);
+  });
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-      <Navbar />
-
-      <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <AdminNav />
+    <AdminLayout>
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 
         <div className="mb-6">
           <h1 className="font-[Playfair_Display] text-2xl font-semibold">Reservations</h1>
@@ -164,11 +168,21 @@ const AdminReservations = () => {
               <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
-          {(hotelId || date || status) ? (
+          <div className="min-w-[220px] flex-1 md:max-w-[260px]">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-slate-500">Reference</label>
+            <input
+              type="text"
+              value={referenceQuery}
+              onChange={(event) => setReferenceQuery(event.target.value)}
+              placeholder="Find booking by ref"
+              className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#0A7C6E] focus:ring-2 focus:ring-[#0A7C6E]/15"
+            />
+          </div>
+          {(hotelId || date || status || referenceQuery) ? (
             <button
               type="button"
-              onClick={() => { setHotelId(''); setDate(''); setStatus(''); setPage(0); }}
-              className="rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-[#0A7C6E] hover:text-[#0A7C6E]"
+              onClick={() => { setHotelId(''); setDate(''); setStatus(''); setReferenceQuery(''); setPage(0); }}
+              className="cursor-pointer rounded-xl border border-[#E5E7EB] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-[#0A7C6E] hover:text-[#0A7C6E]"
             >
               Clear filters
             </button>
@@ -186,7 +200,7 @@ const AdminReservations = () => {
             </div>
           ) : (
             <ReservationTable
-              bookings={bookings}
+              bookings={filteredBookings}
               roomsById={roomsById}
               actingId={actingId}
               onConfirm={(booking) => setPendingAction({ booking, nextStatus: 'CONFIRMED' })}
@@ -200,7 +214,7 @@ const AdminReservations = () => {
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         ) : null}
-      </main>
+      </div>
 
       {pendingAction ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
@@ -243,7 +257,7 @@ const AdminReservations = () => {
           </div>
         </div>
       ) : null}
-    </div>
+    </AdminLayout>
   );
 };
 

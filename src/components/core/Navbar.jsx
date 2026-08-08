@@ -41,6 +41,10 @@ const Navbar = ({ variant = 'default' }) => {
   }, []);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  useEffect(() => {
     const handleAuthRequired = () => {
       setAuthMode('login');
       setAuthOpen(true);
@@ -52,7 +56,7 @@ const Navbar = ({ variant = 'default' }) => {
 
   const isHomeRoute = location.pathname === '/';
   const isHeroVariant = variant === 'hero' || isHomeRoute;
-  const isFixedNav = isHeroVariant;
+  const isFixedNav = true;
   const shouldUseTransparentBg = isHeroVariant && !isScrolled;
   const shouldUseSolidBg = isScrolled || (!isHeroVariant && !shouldUseTransparentBg);
 
@@ -60,9 +64,7 @@ const Navbar = ({ variant = 'default' }) => {
     ? 'border-gray-100 bg-white/80 text-slate-900 shadow-[0_8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl'
     : 'border-transparent bg-transparent text-white';
 
-  const navContainerClasses = isFixedNav
-    ? 'fixed inset-x-0 top-0 z-[60] transition-all duration-300'
-    : 'relative w-full transition-all duration-300';
+  const navContainerClasses = 'fixed inset-x-0 top-0 z-[60] transition-all duration-300';
 
   const iconBadgeClasses = shouldUseSolidBg
     ? 'bg-[#0A7C6E]/10 text-[#0A7C6E]'
@@ -124,11 +126,13 @@ const Navbar = ({ variant = 'default' }) => {
         const roleName = response?.user?.role || response?.role || 'GUEST';
         setAuthSuccessMessage('');
         toast.success('Signed in successfully');
-        redirectByRole(roleName);
         setAuthOpen(false);
+        redirectByRole(roleName);
       } catch (error) {
-        toast.error(error.message || 'Unable to sign in. Please try again.');
-        navigate('/');
+        // Display the backend error message from response body
+        const errorMessage = error?.message || 'Unable to sign in. Please try again.';
+        toast.error(errorMessage);
+        // Keep auth modal open so user can retry
       }
       return;
     }
@@ -137,10 +141,11 @@ const Navbar = ({ variant = 'default' }) => {
       await registerUser({ firstName, lastName, email, password });
       setAuthSuccessMessage('Account created successfully. You can now sign in.');
       setAuthMode('login');
-      setAuthOpen(true);
       toast.success('Account created successfully. Please sign in.');
     } catch (error) {
-      toast.error(error.message || 'Unable to create your account.');
+      // Display the backend error message from response body
+      const errorMessage = error?.message || 'Unable to create your account.';
+      toast.error(errorMessage);
     }
   };
 

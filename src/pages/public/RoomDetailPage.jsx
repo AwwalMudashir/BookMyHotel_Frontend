@@ -334,6 +334,13 @@ const RoomDetailPage = () => {
                   <RoomTagBadges tags={room.tags} size="lg" />
                 </div>
 
+                {room?.description ? (
+                  <div className="mt-4 rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA] p-4">
+                    <h3 className="text-sm font-semibold text-[#1A1A2E]">About this room</h3>
+                    <p className="mt-2 text-sm text-[#6B7280] whitespace-pre-line">{room.description}</p>
+                  </div>
+                ) : null}
+
                 <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-[#6B7280]">
                   <span className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-[#0A7C6E]" />

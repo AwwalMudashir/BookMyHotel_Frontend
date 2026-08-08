@@ -12,19 +12,29 @@ import { parseApiError } from '../../utils/parseApiError';
 // Purpose: Customer payment screen — creates the PaymentIntent for a PENDING booking and
 // hosts Stripe's Payment Element for the actual card/wallet entry.
 const PaymentPage = () => {
-  const { bookingId } = useParams();
+  const { paymentId } = useParams();
   const navigate = useNavigate();
   const { format } = useCurrency();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [intent, setIntent] = useState(null);
+  const [bookingId, setBookingId] = useState(null);
 
   const loadIntent = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await paymentApi.createIntent(bookingId);
+      // First, fetch payment details using paymentId to get the bookingId
+      const payment = await paymentApi.getPaymentByPaymentId(paymentId);
+      if (!payment) {
+        setError('Payment not found. Please check the payment link.');
+        return;
+      }
+      setBookingId(payment.bookingId);
+      
+      // Then create/retrieve the payment intent using the bookingId
+      const data = await paymentApi.createIntent(payment.bookingId);
       setIntent(data);
     } catch (err) {
       // A 502 means Stripe itself rejected the request — that's not something a customer can
@@ -45,7 +55,7 @@ const PaymentPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadIntent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId]);
+  }, [paymentId]);
 
   const elementsOptions = intent?.clientSecret
     ? {
@@ -117,7 +127,7 @@ const PaymentPage = () => {
 
               <div className="mt-6">
                 <Elements stripe={stripePromise} options={elementsOptions}>
-                  <StripeForm bookingId={bookingId} payLabel={`Pay ${format(intent.amount, intent.currency)}`} />
+                  <StripeForm paymentId={paymentId} bookingId={bookingId} payLabel={`Pay ${format(intent.amount, intent.currency)}`} />
                 </Elements>
               </div>
             </>

@@ -5,7 +5,7 @@ import { Loader2, Lock } from 'lucide-react';
 
 // Purpose: Stripe Payment Element form — renders whatever payment methods the PaymentIntent
 // supports (card, wallets, etc.) without us hardcoding any of them.
-const StripeForm = ({ bookingId, payLabel }) => {
+const StripeForm = ({ paymentId, bookingId, payLabel }) => {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();

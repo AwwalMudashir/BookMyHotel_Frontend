@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Building2, CalendarDays, CreditCard, Hash, Leaf, MapPin, Star, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarDays, CreditCard, Hash, Leaf, MapPin, Star, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -14,10 +14,19 @@ const statusMeta = (booking) => {
     return { label: 'Awaiting payment', classes: 'bg-[#FEF3E2] text-[#9A6400]' };
   }
   if (booking.status === 'CONFIRMED') {
-    const isUpcoming = parseISO(booking.checkOut) >= today;
-    return isUpcoming
-      ? { label: 'Upcoming', classes: 'bg-[#E2F0E8] text-[#1D6A2D]' }
-      : { label: 'Completed', classes: 'bg-slate-100 text-slate-600' };
+    const checkInDate = parseISO(booking.checkIn);
+    const checkOutDate = parseISO(booking.checkOut);
+    
+    if (checkOutDate < today) {
+      // Check-out is in the past
+      return { label: 'Completed', classes: 'bg-slate-100 text-slate-600' };
+    } else if (checkInDate > today) {
+      // Check-in is in the future
+      return { label: 'Upcoming', classes: 'bg-[#E2F0E8] text-[#1D6A2D]' };
+    } else {
+      // Check-in is today or in the past, and check-out is in the future
+      return { label: 'Current', classes: 'bg-[#E0F7FF] text-[#0369A1]' };
+    }
   }
   return { label: booking.status, classes: 'bg-slate-100 text-slate-600' };
 };
@@ -33,18 +42,24 @@ const paymentBadgeOverride = (booking, payment) => {
 };
 
 // Purpose: Booking card shown on the customer bookings page.
-const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel, existingReview, reviewChecked, onOpenReview }) => {
+const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel, existingReview, reviewChecked, onWriteReview }) => {
   const { format: formatPrice } = useCurrency();
   const status = paymentBadgeOverride(booking, payment) || statusMeta(booking);
   const nights = Math.max(0, Math.round((parseISO(booking.checkOut) - parseISO(booking.checkIn)) / 86400000));
-  const roomLink = `/rooms/${booking.roomId}`;
+  // Use the room's public-facing random identifier when available (room.roomId).
+  // Do NOT use the Cloudinary publicIds field here — that field stores image IDs.
+  const roomLink = room?.roomId ? `/rooms/${room.roomId}` : `/rooms/${booking.roomId}`;
   const showPayCta = booking.status === 'PENDING' && (!payment || payment.status === 'PENDING' || payment.status === 'FAILED');
   const payCtaLabel = payment?.status === 'FAILED' ? 'Retry payment' : 'Pay now';
+  const paymentLink = payment?.paymentId ? `/payment/${payment.paymentId}` : `/payment/${booking.id}`;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isCompletedStay = booking.status === 'CONFIRMED' && parseISO(booking.checkOut) < today;
   const showReviewCta = isCompletedStay && reviewChecked && !existingReview;
+  const isEarlyCheckoutCancellation = booking.status === 'CANCELLED'
+    && parseISO(booking.checkIn) <= today
+    && parseISO(booking.checkOut) > today;
 
   return (
     <article className="flex flex-col gap-4 rounded-[24px] border border-[#E5E7EB] bg-white p-5 shadow-sm transition hover:shadow-md sm:flex-row">
@@ -102,6 +117,20 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
           </div>
         ) : null}
 
+        {isEarlyCheckoutCancellation ? (
+          <div className="rounded-[22px] border border-[#DBEAFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E40AF] shadow-sm">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-[#1D4ED8]" />
+              <div>
+                <p className="font-semibold">Early checkout cancellation</p>
+                <p className="mt-1 text-xs text-[#334155]">
+                  Your stay was cancelled before checkout, and the room is now available again for other guests.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {isCompletedStay && existingReview ? (
           <div className="rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA] p-3">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-[#0A7C6E]">
@@ -123,7 +152,7 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
           <div className="flex items-center gap-2">
             {showPayCta ? (
               <Link
-                to={`/payment/${booking.id}`}
+                to={paymentLink}
                 className="flex cursor-pointer items-center gap-1.5 rounded-full bg-[#0A7C6E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#065E52]"
               >
                 <CreditCard className="h-4 w-4" />
@@ -139,11 +168,11 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
             {showReviewCta ? (
               <button
                 type="button"
-                onClick={() => onOpenReview(booking, room)}
+                onClick={() => onWriteReview(booking, room)}
                 className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#0A7C6E] px-4 py-2 text-sm font-semibold text-[#0A7C6E] transition hover:bg-[#E6F5F3]"
               >
                 <Star className="h-4 w-4" />
-                Rate your stay
+                Write review
               </button>
             ) : null}
             {canCancel ? (

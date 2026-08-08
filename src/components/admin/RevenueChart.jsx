@@ -2,17 +2,25 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 
 const ACCENT = '#0A7C6E';
 
-// Purpose: Compares revenue across hotels for the selected date range. Only ever receives
-// single-currency hotels (see AdminDashboard) — a hotel whose branches span multiple
-// currencies has no real total to plot, so it's excluded upstream rather than shown here
-// unlabeled or misleadingly summed.
+// Purpose: Compares revenue across hotels for the selected date range. This chart now
+// receives USD-converted revenue values, so the tooltip and bars are consistently shown
+// in a single currency.
+const formatUsd = (value) => {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+};
+
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
     <div className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 shadow-md">
       <p className="text-sm font-semibold text-[#1A1A2E]">
-        {point.currency} {Number(point.revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {formatUsd(point.revenue)}
       </p>
       <p className="text-xs text-[#6B7280]">{point.hotelName}</p>
     </div>

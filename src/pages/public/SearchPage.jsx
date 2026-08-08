@@ -210,7 +210,7 @@ const SearchPage = () => {
   return (
       <div className="min-h-screen bg-[#F8F9FA] text-slate-900">
         <Navbar />
-        <main className="mx-auto flex max-w-[1420px] flex-col gap-6 px-4 py-6 lg:px-8 lg:py-8">
+        <main className="mx-auto flex max-w-355 flex-col gap-6 px-4 py-20 lg:px-8">
           <div className="flex items-center justify-between gap-4 rounded-[28px] bg-white px-6 py-6 shadow-sm">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Find your stay</p>
@@ -236,7 +236,7 @@ const SearchPage = () => {
                 <div>
                   <p className="text-sm text-slate-500">
                     {totalElements > 0
-                      ? `Showing ${showingFrom}–${showingTo} of ${totalElements} rooms`
+                      ? `Showing ${showingFrom}–${showingTo} of ${totalElements} available rooms`
                       : hasSearched
                       ? 'No rooms found'
                       : 'Refine your filters to start searching'}

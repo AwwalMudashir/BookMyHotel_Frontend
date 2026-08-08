@@ -175,7 +175,28 @@ axiosInstance.interceptors.request.use(async (config) => {
 }, (error) => Promise.reject(error));
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try {
+      const emailFailure = response?.headers?.['x-email-failure'] || response?.headers?.['X-Email-Failure'];
+      if (emailFailure) {
+        const map = {
+          welcome_email_failed: 'Welcome email could not be sent. The account was created successfully.',
+          manager_welcome_email_failed: 'Manager welcome email could not be sent. The account was created successfully.',
+          admin_welcome_email_failed: 'Admin welcome email could not be sent. The account was created successfully.',
+          contact_notification_failed: 'Your enquiry was received but we could not send a notification email to support.',
+          booking_confirmation_email_failed: 'Booking confirmed but confirmation email could not be sent.',
+          booking_cancellation_email_failed: 'Booking cancelled but cancellation email could not be sent.',
+          booking_cancellation_email_failed: 'Booking cancellation email could not be sent.',
+          otp_email_failed: 'OTP email could not be sent. Please try resending.',
+        };
+        const message = map[emailFailure] || 'An important email could not be sent. Please check your inbox or try again later.';
+        toast.error(message);
+      }
+    } catch (e) {
+      // ignore toast errors
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
@@ -215,3 +236,4 @@ axiosInstance.interceptors.response.use(
 );
 
 export default axiosInstance;
+

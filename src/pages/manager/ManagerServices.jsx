@@ -1,6 +1,6 @@
-import Navbar from '../../components/core/Navbar';
 import ServiceManager from '../../components/manager/ServiceManager';
 import { useAuth } from '../../hooks/useAuth';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 // Purpose: Manager ancillary service management page. Only ever renders the create-service
 // tool for a HOTEL_MANAGER whose account has a managedHotel assigned — anyone else (including
@@ -11,10 +11,8 @@ const ManagerServices = () => {
   const managedHotelId = user?.managedHotel?.id;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-      <Navbar />
-
-      <main className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
+    <AdminLayout>
+      <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-6">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Property services</p>
           <h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold text-[#1A1A2E]">Add a service</h1>
@@ -32,8 +30,8 @@ const ManagerServices = () => {
         ) : (
           <ServiceManager hotelId={managedHotelId} />
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

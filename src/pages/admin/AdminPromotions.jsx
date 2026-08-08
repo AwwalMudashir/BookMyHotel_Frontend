@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../../components/core/Navbar';
-import AdminNav from '../../components/admin/AdminNav';
+import AdminLayout from '../../components/admin/AdminLayout';
 import PromotionManager from '../../components/promotion/PromotionManager';
 import hotelApi from '../../api/hotelApi';
 import Spinner from '../../components/core/Spinner';
@@ -26,11 +25,8 @@ const AdminPromotions = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-      <Navbar />
-
-      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-        <AdminNav />
+    <AdminLayout>
+      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
 
         <div className="mb-6">
           <h1 className="font-[Playfair_Display] text-2xl font-semibold">Promotions</h1>
@@ -63,8 +59,8 @@ const AdminPromotions = () => {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

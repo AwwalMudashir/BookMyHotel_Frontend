@@ -18,6 +18,17 @@ const paymentApi = {
       throw err;
     }
   },
+
+  // Fetch payment using paymentId (public ID) instead of database ID for enhanced security
+  async getPaymentByPaymentId(paymentId) {
+    try {
+      const res = await axiosInstance.get(`/payments/by-id/${paymentId}`);
+      return res.data;
+    } catch (err) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  },
 };
 
 export default paymentApi;

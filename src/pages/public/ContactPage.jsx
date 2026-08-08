@@ -61,7 +61,7 @@ const ContactPage = () => {
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
       <Navbar />
 
-      <main className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-5xl px-4 py-28 sm:px-6 lg:px-8">
         <div className="mb-10 text-center">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Get in touch</p>
           <h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold text-[#1A1A2E] sm:text-4xl">Contact us</h1>

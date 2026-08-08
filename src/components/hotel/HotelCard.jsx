@@ -51,7 +51,9 @@ const HotelCard = ({ hotel }) => {
   const imageUrl = hotel?.logoUrl || (Array.isArray(hotel?.images) ? hotel.images.find(Boolean) : hotel?.image ?? '');
   const branchCount = Array.isArray(hotel?.branches) ? hotel.branches.length : 0;
   const cheapestRoom = getCheapestRoomPriceInfo(hotel);
-  const rating = Number(hotel?.starRating ?? hotel?.rating ?? 0) || 0;
+  // If the backend provides a rating (averageRating/starRating/rating/stars) use it; otherwise default to 5
+  const rawRating = hotel?.averageRating ?? hotel?.starRating ?? hotel?.rating ?? hotel?.stars;
+  const rating = Number(rawRating ?? 5) || 5;
   const branchLabel = branchCount > 0 ? `${branchCount} ${branchCount === 1 ? 'branch' : 'branches'} across Asia & Europe` : 'Branches available';
 
   const handleNavigate = () => {

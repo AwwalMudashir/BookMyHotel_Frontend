@@ -19,8 +19,10 @@ function App() {
         <AuthProvider>
           <CurrencyProvider>
             <BookingProvider>
-              <Toaster position="top-right" />
-              <AppRouter />
+              <div className="min-h-screen bg-[#F8F9FA]">
+                <Toaster position="top-right" />
+                <AppRouter />
+              </div>
             </BookingProvider>
           </CurrencyProvider>
         </AuthProvider>

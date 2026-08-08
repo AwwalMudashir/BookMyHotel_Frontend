@@ -320,9 +320,10 @@ const HomeHero = () => {
                 </div>
               ) : (
                 filteredResults.map((room) => (
-                  <Link
-                    key={room.roomId}
-                    to={`/rooms/${room.roomId}`}
+                    <Link
+                    key={room.roomId ?? room.id}
+                    // Prefer the public-facing random room.roomId. Do NOT use cloudinary public IDs here.
+                    to={`/rooms/${room.roomId ?? room.id ?? room.roomID}`}
                     onClick={() => setShowDropdown(false)}
                     className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 transition hover:bg-[#F8F9FA] last:border-b-0"
                   >

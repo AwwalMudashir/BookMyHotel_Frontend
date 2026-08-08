@@ -47,7 +47,7 @@ const ManagerDashboard = () => {
 	};
 
 	return (
-		<div className="p-6">
+		<div className="p-6 fade-in">
 			<h1 className="text-2xl font-semibold text-slate-900">Manager dashboard</h1>
 			<p className="mt-2 text-sm text-slate-600">Overview and management tools for your property.</p>
 

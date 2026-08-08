@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Building2, Edit2, Leaf, MapPin, Plus, RefreshCw } from 'lucide-react';
-import Navbar from '../../components/core/Navbar';
-import AdminNav from '../../components/admin/AdminNav';
+import AdminLayout from '../../components/admin/AdminLayout';
 import BranchFormModal from '../../components/admin/BranchFormModal';
 import Spinner from '../../components/core/Spinner';
 import hotelApi from '../../api/hotelApi';
@@ -53,11 +52,8 @@ const AdminBranches = () => {
   const hotelName = hotels.find((hotel) => String(hotel.id) === String(hotelId))?.name || '';
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-      <Navbar />
-
-      <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-        <AdminNav />
+    <AdminLayout>
+      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
 
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -140,7 +136,7 @@ const AdminBranches = () => {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {showForm ? (
         <BranchFormModal
@@ -152,7 +148,7 @@ const AdminBranches = () => {
           }}
         />
       ) : null}
-    </div>
+    </AdminLayout>
   );
 };
 

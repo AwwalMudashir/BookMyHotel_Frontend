@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Star, Leaf, RefreshCw } from 'lucide-react';
 import Navbar from '../../components/core/Navbar';
 import Footer from '../../components/core/Footer';
@@ -19,6 +19,39 @@ const HotelDetailPage = () => {
   const [branchLoading, setBranchLoading] = useState(false);
   const [error, setError] = useState('');
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [openReviewSection, setOpenReviewSection] = useState(false);
+  const [pendingBranchId, setPendingBranchId] = useState(null);
+  const reviewSectionRef = useRef(null);
+
+  // Client-side pagination for rooms (backend currently returns full list)
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 6; // show 6 rooms per page
+
+  useEffect(() => {
+    // Reset to first page whenever the selected branch changes
+    setPage(1);
+  }, [selectedBranch?.id]);
+
+  useEffect(() => {
+    const branchIdParam = searchParams.get('branchId');
+    const showReview = searchParams.get('showReview') === 'true' || searchParams.get('review') === 'true';
+    setPendingBranchId(branchIdParam ? String(branchIdParam) : null);
+    setOpenReviewSection(showReview);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!branches.length || !pendingBranchId) return;
+    const selected = branches.find((branch) => String(branch.id) === String(pendingBranchId));
+    if (selected) {
+      setSelectedBranch(selected);
+    }
+  }, [branches, pendingBranchId]);
+
+  useEffect(() => {
+    if (!openReviewSection || !selectedBranch?.id || !reviewSectionRef.current) return;
+    reviewSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [openReviewSection, selectedBranch?.id]);
 
   useEffect(() => {
     const loadHotel = async () => {
@@ -126,24 +159,28 @@ const HotelDetailPage = () => {
               </div>
             </section>
 
-            <section className="rounded-[32px] border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {branches.map((branch) => {
-                  const isActive = selectedBranch?.id === branch.id;
-                  const label = branch.city ? `${branch.city}${branch.country ? ` • ${branch.country}` : ''}` : 'Branch';
-                  return (
-                    <button
-                      key={branch.id ?? `${branch.city}-${branch.country}`}
-                      type="button"
-                      onClick={() => setSelectedBranch(branch)}
-                      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${isActive ? 'border-[#0A7C6E] bg-[#E6F5F3] text-[#0A7C6E]' : 'border-[#E5E7EB] bg-[#F8F9FA] text-[#6B7280] hover:border-[#0A7C6E] hover:text-[#0A7C6E]'}`}
-                    >
-                      <MapPin size={15} />
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
+            <section className="rounded-[32px] border  border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
+              <div className="items-center flex gap-3 text-sm text-[#6B7280]">
+                <span className='mt-[-10px]'>Select a Branch </span>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {branches.map((branch) => {
+                    const isActive = selectedBranch?.id === branch.id;
+                    const label = branch.city ? `${branch.city}${branch.country ? ` • ${branch.country}` : ''}` : 'Branch';
+                    return (
+                      <button
+                        key={branch.id ?? `${branch.city}-${branch.country}`}
+                        type="button"
+                        onClick={() => setSelectedBranch(branch)}
+                        className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${isActive ? 'border-[#0A7C6E] bg-[#E6F5F3] text-[#0A7C6E]' : 'border-[#E5E7EB] bg-[#F8F9FA] text-[#6B7280] hover:border-[#0A7C6E] hover:text-[#0A7C6E]'}`}
+                      >
+                        <MapPin size={15} />
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
 
               {selectedBranch ? (
                 <div className="mt-6 rounded-[24px] border border-[#E5E7EB] bg-[#F8F9FA] p-5">
@@ -218,16 +255,56 @@ const HotelDetailPage = () => {
                   No rooms are available for this branch right now.
                 </div>
               ) : (
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {rooms.map((room, index) => (
-                    <RoomCard key={room?.id ?? room?.roomId ?? room?.roomID ?? `room-${index}`} room={room} />
-                  ))}
-                </div>
+                // Paginate rooms client-side: show PAGE_SIZE items per page
+                (() => {
+                  const totalRooms = rooms.length;
+                  const totalPages = Math.max(1, Math.ceil(totalRooms / PAGE_SIZE));
+                  const startIndex = (page - 1) * PAGE_SIZE;
+                  const endIndex = Math.min(startIndex + PAGE_SIZE, totalRooms);
+                  const paginatedRooms = rooms.slice(startIndex, endIndex);
+
+                  return (
+                    <>
+                      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                        {paginatedRooms.map((room, index) => (
+                          <RoomCard key={room?.id ?? room?.roomId ?? room?.roomID ?? `room-${startIndex + index}`} room={room} />
+                        ))}
+                      </div>
+
+                      {totalRooms > PAGE_SIZE ? (
+                        <div className="mt-6 flex items-center justify-between">
+                          <div className="text-sm text-[#6B7280]">
+                            Showing {startIndex + 1}–{endIndex} of {totalRooms} rooms
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPage((p) => Math.max(1, p - 1))}
+                              disabled={page === 1}
+                              className={`rounded-full border px-4 py-2 text-sm ${page === 1 ? 'cursor-not-allowed opacity-50' : 'bg-white hover:bg-gray-50'}`}
+                            >
+                              Previous
+                            </button>
+                            <div className="text-sm text-[#6B7280]">Page {page} / {totalPages}</div>
+                            <button
+                              type="button"
+                              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                              disabled={page === totalPages}
+                              className={`rounded-full border px-4 py-2 text-sm ${page === totalPages ? 'cursor-not-allowed opacity-50' : 'bg-white hover:bg-gray-50'}`}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  );
+                })()
               )}
             </section>
 
             {selectedBranch ? (
-              <section className="rounded-[32px] border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
+              <section ref={reviewSectionRef} className="rounded-[32px] border border-[#E5E7EB] bg-[#FFFFFF] p-5 shadow-sm sm:p-6">
                 <ReviewList key={selectedBranch.id} branchId={selectedBranch.id} />
               </section>
             ) : null}
@@ -235,7 +312,7 @@ const HotelDetailPage = () => {
         ) : null}
       </main>
 
-      <Footer/>
+      <Footer />
     </div>
   );
 };

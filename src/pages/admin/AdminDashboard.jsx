@@ -2,14 +2,22 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { BedDouble, Coins, Info, TrendingUp } from 'lucide-react';
-import Navbar from '../../components/core/Navbar';
-import AdminNav from '../../components/admin/AdminNav';
+import AdminLayout from '../../components/admin/AdminLayout';
 import KpiCard from '../../components/admin/KpiCard';
 import RevenueChart from '../../components/admin/RevenueChart';
 import Spinner from '../../components/core/Spinner';
 import analyticsApi from '../../api/analyticsApi';
 import hotelApi from '../../api/hotelApi';
 import { parseApiError } from '../../utils/parseApiError';
+
+const formatUsd = (value) => {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+};
 
 const todayString = format(new Date(), 'yyyy-MM-dd');
 const defaultStart = format(subDays(new Date(), 30), 'yyyy-MM-dd');
@@ -90,12 +98,8 @@ const AdminDashboard = () => {
   }, [startDate, endDate]);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-      <Navbar />
-
-      <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <AdminNav />
-
+    <AdminLayout>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-[Playfair_Display] text-2xl font-semibold">Analytics</h1>
@@ -137,16 +141,16 @@ const AdminDashboard = () => {
             <div className="grid gap-4 sm:grid-cols-3">
               <KpiCard label="Room nights booked" value={(summary?.roomNightsBooked ?? 0).toLocaleString()} icon={BedDouble} />
               <KpiCard
-                label="Revenue"
-                value={(summary?.revenue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                label="Revenue (USD)"
+                value={formatUsd(summary?.revenue)}
                 icon={Coins}
-                hint="Currencies not converted — blended figure, only exact if every hotel shares one currency."
+                hint="Converted to USD using live exchange rates."
               />
               <KpiCard
-                label="Average daily rate"
-                value={(summary?.averageDailyRate ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                label="Average daily rate (USD)"
+                value={formatUsd(summary?.averageDailyRate)}
                 icon={TrendingUp}
-                hint="Same currency caveat as revenue applies here."
+                hint="Computed from the USD-converted platform revenue."
               />
             </div>
 
@@ -182,8 +186,8 @@ const AdminDashboard = () => {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

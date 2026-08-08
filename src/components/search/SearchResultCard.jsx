@@ -16,7 +16,9 @@ const SearchResultCard = ({ room, checkIn, checkOut }) => {
   const totalPrice = typeof room.totalPrice === 'number' ? room.totalPrice : (room.pricePerNight && nights > 0 ? room.pricePerNight * nights : null);
   const available = room.available !== false;
 
-  const roomLink = `/rooms/${room.roomId}${checkIn && checkOut ? `?checkIn=${checkIn}&checkOut=${checkOut}` : ''}`;
+  // Use room.roomId for the public-facing room identifier (random string).
+  // Do not use cloudinary public IDs (they live in images/publicIds).
+  const roomLink = `/rooms/${room?.roomId ?? room?.id ?? room?.roomID}${checkIn && checkOut ? `?checkIn=${checkIn}&checkOut=${checkOut}` : ''}`;
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[#E5E7EB] bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#0A7C6E]/30 hover:shadow-lg">
@@ -34,14 +36,14 @@ const SearchResultCard = ({ room, checkIn, checkOut }) => {
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-black/0" />
 
-        <span
+        {/* <span
           className={`absolute left-4 top-4 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] backdrop-blur-sm ${
             available ? 'bg-white/90 text-[#1D6A2D]' : 'bg-white/90 text-[#9B1E1E]'
           }`}
         >
           <span className={`h-1.5 w-1.5 rounded-full ${available ? 'bg-[#1D6A2D]' : 'bg-[#9B1E1E]'}`} />
           {available ? 'Available' : 'Unavailable'}
-        </span>
+        </span> */}
 
         {room.tags?.length > 0 ? (
           <RoomTagBadges tags={room.tags} className="absolute right-4 top-4 flex-col items-end" />

@@ -53,6 +53,17 @@ const adminApi = {
 		const res = await axiosInstance.put(`/admin/reservations/${id}`, { status });
 		return res.data;
 	},
+
+	// Users management
+	async getUsers() {
+		const res = await axiosInstance.get('/admin/users');
+		return res.data;
+	},
+
+	async deleteUser(userId) {
+		const res = await axiosInstance.delete(`/admin/users/${userId}`);
+		return res.data;
+	},
 };
 
 export default adminApi;

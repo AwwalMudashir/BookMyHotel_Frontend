@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Star, MapPin, Edit2, Eye, Trash2, Plus, RefreshCw } from 'lucide-react';
-import Navbar from '../../components/core/Navbar';
-import AdminNav from '../../components/admin/AdminNav';
+import AdminLayout from '../../components/admin/AdminLayout';
 import hotelApi from '../../api/hotelApi';
 import adminApi from '../../api/adminApi';
 import Spinner from '../../components/core/Spinner';
 import HotelFormModal from '../../components/admin/HotelFormModal';
 
-const truncate = (text = '', length = 60) => (text.length > length ? `${text.slice(0, length)}...` : text);
+const truncate = (text = '', length = 40) => (text.length > length ? `${text.slice(0, length)}...` : text);
 
 const AdminHotels = () => {
 	const [hotels, setHotels] = useState([]);
@@ -55,11 +54,8 @@ const AdminHotels = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
-			<Navbar />
-
-			<main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-				<AdminNav />
+		<AdminLayout>
+			<div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 
 				<div className="mb-6 flex items-center justify-between gap-4">
 					<div>
@@ -90,53 +86,53 @@ const AdminHotels = () => {
 							<button type="button" onClick={() => { setEditingHotel(null); setShowForm(true); }} className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#0A7C6E] px-4 py-2 text-sm font-semibold text-white">Add Hotel</button>
 						</div>
 					) : (
-						<div className="overflow-x-auto">
-							<table className="w-full table-fixed">
+						<div className="overflow-x-hidden">
+							<table className="w-full table-auto">
 								<thead>
-									<tr className="text-left text-sm text-[#6B7280]">
-										<th className="w-1/4 py-3">Hotel Name</th>
-										<th className="w-1/6 py-3">Star Rating</th>
-										<th className="w-1/6 py-3">Branches</th>
-										<th className="w-1/3 py-3">Description</th>
-										<th className="w-1/12 py-3">Status</th>
-										<th className="w-1/12 py-3">Actions</th>
+									<tr className="text-left text-xs text-[#6B7280]">
+										<th className="w-1/4 py-2">Hotel Name</th>
+										<th className="w-1/6 py-2">Star</th>
+										<th className="w-1/12 py-2">Branches</th>
+										<th className="w-1/3 py-2">Description</th>
+										<th className="w-1/12 py-2">Status</th>
+										<th className="w-1/12 py-2">Actions</th>
 									</tr>
 								</thead>
-								<tbody className="divide-y">
+								<tbody>
 									{hotels.map((hotel) => (
 										<tr key={hotel.id} className="align-top">
-											<td className="py-4">
-												<div className="flex items-center gap-3">
-													<div className="rounded-md bg-[#E6F5F3] p-2 text-[#0A7C6E]"><Building2 /></div>
-													<div>
-														<div className="font-medium text-[#1A1A2E]">{hotel.name}</div>
+											<td className="py-2">
+												<div className="flex items-center gap-2">
+													<div className="rounded-md bg-[#E6F5F3] p-1 text-[#0A7C6E]"><Building2 size={12} /></div>
+													<div className="min-w-0">
+														<div className="font-medium text-sm text-[#1A1A2E] truncate">{hotel.name}</div>
 													</div>
 												</div>
 											</td>
-											<td className="py-4">
-												<div className="flex items-center gap-2">
+											<td className="py-2">
+												<div className="flex items-center gap-1">
 													{Array.from({ length: 5 }).map((_, idx) => (
-														<Star key={idx} size={14} className={idx < Math.round(hotel.starRating) ? 'text-[#C9A84C]' : 'text-[#E5E7EB]'} />
+														<Star key={idx} size={12} className={idx < Math.round(hotel.starRating) ? 'text-[#C9A84C]' : 'text-[#E5E7EB]'} />
 													))}
 												</div>
 											</td>
-											<td className="py-4">
-												<div className="flex items-center gap-2 text-sm text-[#6B7280]"><MapPin size={14} />{(hotel.branches || []).length}</div>
+											<td className="py-2">
+												<div className="flex items-center gap-1 text-xs text-[#6B7280]"><MapPin size={12} />{(hotel.branches || []).length}</div>
 											</td>
-											<td className="py-4 text-sm text-[#6B7280]">{truncate(hotel.description)}</td>
-											<td className="py-4">
-												<span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">Active</span>
+											<td className="py-2 text-xs text-[#6B7280] min-w-0 truncate">{truncate(hotel.description)}</td>
+											<td className="py-2">
+												<span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Active</span>
 											</td>
-											<td className="py-4">
-												<div className="flex items-center gap-2">
-													<button title="Edit" onClick={() => handleEdit(hotel)} className="rounded-full p-2 text-slate-600 hover:text-[#0A7C6E]">
-														<Edit2 />
+											<td className="py-2">
+												<div className="flex items-center gap-1">
+													<button title="Edit" onClick={() => handleEdit(hotel)} className="rounded-full p-1 text-slate-600 hover:text-[#0A7C6E]">
+														<Edit2 size={14} />
 													</button>
-													<button title="View Branches" onClick={() => navigate(`/admin/branches?hotelId=${hotel.id}`)} className="rounded-full p-2 text-slate-600 hover:text-blue-600">
-														<Eye />
+													<button title="View Branches" onClick={() => navigate(`/admin/branches?hotelId=${hotel.id}`)} className="rounded-full p-1 text-slate-600 hover:text-blue-600">
+														<Eye size={14} />
 													</button>
-													<button title="Delete" onClick={() => setConfirmDelete(hotel)} className="rounded-full p-2 text-slate-600 hover:text-red-600">
-														<Trash2 />
+													<button title="Delete" onClick={() => setConfirmDelete(hotel)} className="rounded-full p-1 text-slate-600 hover:text-red-600">
+														<Trash2 size={14} />
 													</button>
 												</div>
 											</td>
@@ -147,7 +143,7 @@ const AdminHotels = () => {
 						</div>
 					)}
 				</div>
-			</main>
+			</div>
 
 			{showForm ? <HotelFormModal hotel={editingHotel} onClose={() => { setShowForm(false); loadHotels(); }} /> : null}
 
@@ -163,7 +159,7 @@ const AdminHotels = () => {
 					</div>
 				</div>
 			) : null}
-		</div>
+		</AdminLayout>
 	);
 };
 

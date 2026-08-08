@@ -6,8 +6,8 @@ import { AlertCircle, CalendarCheck2, CalendarClock, Search } from 'lucide-react
 import Navbar from '../../components/core/Navbar';
 import BookingCard from '../../components/booking/BookingCard';
 import CancelModal from '../../components/booking/CancelModal';
-import ReviewForm from '../../components/review/ReviewForm';
 import bookingApi from '../../api/bookingApi';
+import hotelApi from '../../api/hotelApi';
 import roomApi from '../../api/roomApi';
 import paymentApi from '../../api/paymentApi';
 import reviewApi from '../../api/reviewApi';
@@ -45,7 +45,6 @@ const MyBookingsPage = () => {
   // not per booking, so two completed stays at the same branch share one review record.
   const [myReviewByBranchId, setMyReviewByBranchId] = useState({});
   const inFlightReviewBranchIds = useRef(new Set());
-  const [reviewTarget, setReviewTarget] = useState(null); // { booking, room }
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +119,7 @@ const MyBookingsPage = () => {
       // No "get my review for this branch" endpoint exists — best-effort: check a generously
       // sized first page for a review by this user. Fine at this app's scale; if a branch ever
       // has more reviews than this page size, a stale CTA would just surface the real 409 on
-      // submit, which is handled gracefully in ReviewForm.
+      // submit, which is handled gracefully by the backend.
       reviewApi
         .getBranchReviews(branchId, { page: 0, size: 50 })
         .then((data) => {
@@ -131,12 +130,6 @@ const MyBookingsPage = () => {
         .finally(() => inFlightReviewBranchIds.current.delete(branchId));
     });
   }, [bookings, roomsById, myReviewByBranchId, user?.id]);
-
-  const handleReviewSubmitted = (review) => {
-    setMyReviewByBranchId((current) => ({ ...current, [review.branchId]: review }));
-    setReviewTarget(null);
-    toast.success('Thanks for your review!');
-  };
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -151,6 +144,32 @@ const MyBookingsPage = () => {
     } finally {
       setLoadingMore(false);
     }
+  };
+
+  const handleWriteReview = async (booking, room) => {
+    const branchId = room?.branchId ?? room?.branchID;
+    if (!branchId) {
+      toast.error('Unable to identify the branch for this booking.');
+      return;
+    }
+
+    let hotelId = room?.hotelId ?? room?.hotelID ?? room?.hotel_id;
+    if (!hotelId) {
+      try {
+        const branchDetails = await hotelApi.getBranchById(branchId);
+        hotelId = branchDetails?.hotelId ?? branchDetails?.hotelID ?? branchDetails?.hotel_id;
+      } catch (err) {
+        toast.error('Unable to load hotel information right now.');
+        return;
+      }
+    }
+
+    if (!hotelId) {
+      toast.error('Unable to determine hotel details for this review.');
+      return;
+    }
+
+    navigate(`/hotels/${hotelId}?branchId=${branchId}&showReview=true`);
   };
 
   const handleCancelConfirm = async () => {
@@ -177,19 +196,22 @@ const MyBookingsPage = () => {
     .sort((a, b) => parseISO(b.checkOut) - parseISO(a.checkOut));
   const visibleBookings = activeTab === 'upcoming' ? upcoming : past;
 
-  const canCancel = (booking) => booking.status !== 'CANCELLED' && parseISO(booking.checkIn) > today;
+  const canCancel = (booking) => booking.status !== 'CANCELLED' && parseISO(booking.checkOut) > today;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
+    <div className="min-h-screen bg-[#F7FAFC] text-[#1A1A2E]">
       <Navbar />
 
       <main className="mx-auto max-w-4xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-6">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Your stays</p>
           <h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold text-[#1A1A2E]">My bookings</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#4B5563]">
+            Manage your confirmed stays and cancellations in one place. Current reservations can be cancelled until checkout, and any early checkout will release the room immediately.
+          </p>
         </div>
 
-        <div className="mb-6 inline-flex gap-1 rounded-2xl border border-[#E5E7EB] bg-white p-1 shadow-sm">
+        <div className="mb-6 inline-flex gap-1 rounded-[28px] border border-[#E5E7EB] bg-white p-1 shadow-sm">
           <button
             type="button"
             onClick={() => setActiveTab('upcoming')}
@@ -268,7 +290,7 @@ const MyBookingsPage = () => {
                   onCancel={setCancelTarget}
                   existingReview={branchId != null ? myReviewByBranchId[branchId] : null}
                   reviewChecked={branchId != null && Object.prototype.hasOwnProperty.call(myReviewByBranchId, branchId)}
-                  onOpenReview={(targetBooking, targetRoom) => setReviewTarget({ booking: targetBooking, room: targetRoom })}
+                  onWriteReview={handleWriteReview}
                 />
               );
             })}
@@ -293,15 +315,6 @@ const MyBookingsPage = () => {
         onConfirm={handleCancelConfirm}
         onClose={() => setCancelTarget(null)}
       />
-
-      {reviewTarget ? (
-        <ReviewForm
-          branchId={reviewTarget.room?.branchId}
-          branchName={reviewTarget.room?.branchName}
-          onClose={() => setReviewTarget(null)}
-          onSubmitted={handleReviewSubmitted}
-        />
-      ) : null}
     </div>
   );
 };
