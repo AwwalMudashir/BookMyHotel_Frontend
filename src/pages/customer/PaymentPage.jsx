@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { AlertCircle, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, ShieldCheck, Sparkles } from 'lucide-react';
 import Navbar from '../../components/core/Navbar';
 import StripeForm from '../../components/payment/StripeForm';
 import stripePromise from '../../lib/stripe';
 import paymentApi from '../../api/paymentApi';
+import bookingApi from '../../api/bookingApi';
 import { useCurrency } from '../../hooks/useCurrency';
 import { parseApiError } from '../../utils/parseApiError';
 
 // Purpose: Customer payment screen — creates the PaymentIntent for a PENDING booking and
 // hosts Stripe's Payment Element for the actual card/wallet entry.
 const PaymentPage = () => {
-  const { paymentId } = useParams();
+  // Route historically used bookingId as the param name: /payment/:bookingId
+  // but some external links may pass a paymentId. Support both for robustness.
+  const params = useParams();
+  const paymentIdParam = params.paymentId || null;
+  const bookingIdParam = params.bookingId || null;
   const navigate = useNavigate();
   const { format } = useCurrency();
 
@@ -20,22 +25,53 @@ const PaymentPage = () => {
   const [error, setError] = useState('');
   const [intent, setIntent] = useState(null);
   const [bookingId, setBookingId] = useState(null);
+  const [bookingDetails, setBookingDetails] = useState(null);
+
+  const handleIntentResponse = (data, resolvedBookingId) => {
+    const waitingForStripe = ['processing', 'requires_capture'].includes(data?.stripeStatus);
+    if (data?.status === 'SUCCEEDED' || waitingForStripe) {
+      navigate(`/bookings/${resolvedBookingId}/payment-return`, { replace: true });
+      return;
+    }
+    if (!data?.clientSecret) {
+      throw new Error('No payable Stripe session was returned for this booking.');
+    }
+    setIntent(data);
+  };
 
   const loadIntent = async () => {
     setLoading(true);
     setError('');
     try {
-      // First, fetch payment details using paymentId to get the bookingId
-      const payment = await paymentApi.getPaymentByPaymentId(paymentId);
-      if (!payment) {
-        setError('Payment not found. Please check the payment link.');
+      // Two supported flows:
+      // 1) Route provides a paymentId (public id) -> lookup payment by paymentId to get bookingId
+      // 2) Route provides a bookingId -> create/retrieve intent for that booking directly
+      if (paymentIdParam) {
+        const payment = await paymentApi.getPaymentByPaymentId(paymentIdParam);
+        if (!payment) {
+          setError('Payment not found. Please check the payment link.');
+          return;
+        }
+        setBookingId(payment.bookingId);
+        const [data, details] = await Promise.all([
+          paymentApi.createIntent(payment.bookingId),
+          bookingApi.getBooking(payment.bookingId).catch(() => null),
+        ]);
+        handleIntentResponse(data, payment.bookingId);
+        setBookingDetails(details);
+      } else if (bookingIdParam) {
+        // If route carried bookingId, just create/retrieve intent for that booking.
+        setBookingId(bookingIdParam);
+        const [data, details] = await Promise.all([
+          paymentApi.createIntent(bookingIdParam),
+          bookingApi.getBooking(bookingIdParam).catch(() => null),
+        ]);
+        handleIntentResponse(data, bookingIdParam);
+        setBookingDetails(details);
+      } else {
+        setError('Invalid payment link.');
         return;
       }
-      setBookingId(payment.bookingId);
-      
-      // Then create/retrieve the payment intent using the bookingId
-      const data = await paymentApi.createIntent(payment.bookingId);
-      setIntent(data);
     } catch (err) {
       // A 502 means Stripe itself rejected the request — that's not something a customer can
       // act on, so show a generic message rather than whatever Stripe's own text says.
@@ -54,8 +90,9 @@ const PaymentPage = () => {
     // outside the effect rather than as an effect-local function.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadIntent();
+    // Re-run if either param changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentId]);
+  }, [paymentIdParam, bookingIdParam]);
 
   const elementsOptions = intent?.clientSecret
     ? {
@@ -120,6 +157,35 @@ const PaymentPage = () => {
             </div>
           ) : intent ? (
             <>
+              {bookingDetails ? (
+                <div className="mt-5 rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA] p-4">
+                  {bookingDetails.hotelName ? <p className="font-semibold text-[#1A1A2E]">{bookingDetails.hotelName}</p> : null}
+                  <p className="mt-1 flex items-center gap-2 text-sm text-[#6B7280]">
+                    <CalendarDays className="h-4 w-4 text-[#0A7C6E]" />
+                    {bookingDetails.checkIn} → {bookingDetails.checkOut}
+                  </p>
+                  {bookingDetails.services?.length > 0 ? (
+                    <div className="mt-4 border-t border-[#E5E7EB] pt-3">
+                      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7C6E]"><Sparkles className="h-3.5 w-3.5" /> Included services</p>
+                      <div className="space-y-2">
+                        {bookingDetails.services.map((service) => (
+                          <div key={service.id} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="text-[#1A1A2E]">{service.serviceName} × {service.quantity}</span>
+                            <span className="font-medium text-[#0A7C6E]">{format(service.subtotal, intent.currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {bookingDetails.ecoPointsRedeemed > 0 ? (
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#DCEFEA] pt-3 text-sm text-[#0A7C6E]">
+                      <span className="flex items-center gap-1.5 font-medium"><Leaf className="h-4 w-4" /> Eco points ({bookingDetails.ecoPointsRedeemed})</span>
+                      <span className="font-semibold">-{format(bookingDetails.ecoPointsDiscount, intent.currency)}</span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="mt-5 flex items-center justify-between rounded-2xl bg-[#F8F9FA] px-4 py-3.5 text-sm">
                 <span className="text-[#6B7280]">Amount due</span>
                 <span className="text-lg font-semibold text-[#0A7C6E]">{format(intent.amount, intent.currency)}</span>
@@ -127,7 +193,7 @@ const PaymentPage = () => {
 
               <div className="mt-6">
                 <Elements stripe={stripePromise} options={elementsOptions}>
-                  <StripeForm paymentId={paymentId} bookingId={bookingId} payLabel={`Pay ${format(intent.amount, intent.currency)}`} />
+                  <StripeForm bookingId={bookingId} payLabel={`Pay ${format(intent.amount, intent.currency)}`} />
                 </Elements>
               </div>
             </>

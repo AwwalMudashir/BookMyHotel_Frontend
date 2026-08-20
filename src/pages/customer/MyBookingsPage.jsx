@@ -22,7 +22,7 @@ const getTodayMidnight = () => {
 
 const MyBookingsPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, reloadUser } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
 
   const [bookings, setBookings] = useState([]);
@@ -146,6 +146,23 @@ const MyBookingsPage = () => {
     }
   };
 
+  const handleCancelRequest = (booking) => {
+    setCancelTarget(booking);
+    const bookingId = booking?.id;
+    if (
+      bookingId == null
+      || Object.prototype.hasOwnProperty.call(paymentsById, bookingId)
+      || inFlightPaymentIds.current.has(bookingId)
+    ) return;
+
+    inFlightPaymentIds.current.add(bookingId);
+    paymentApi
+      .getPayment(bookingId)
+      .then((payment) => setPaymentsById((current) => ({ ...current, [bookingId]: payment })))
+      .catch(() => setPaymentsById((current) => ({ ...current, [bookingId]: null })))
+      .finally(() => inFlightPaymentIds.current.delete(bookingId));
+  };
+
   const handleWriteReview = async (booking, room) => {
     const branchId = room?.branchId ?? room?.branchID;
     if (!branchId) {
@@ -158,7 +175,7 @@ const MyBookingsPage = () => {
       try {
         const branchDetails = await hotelApi.getBranchById(branchId);
         hotelId = branchDetails?.hotelId ?? branchDetails?.hotelID ?? branchDetails?.hotel_id;
-      } catch (err) {
+      } catch {
         toast.error('Unable to load hotel information right now.');
         return;
       }
@@ -177,8 +194,14 @@ const MyBookingsPage = () => {
     setCancelling(true);
     try {
       const updated = await bookingApi.cancelBooking(cancelTarget.id);
-      setBookings((current) => current.map((booking) => (booking.id === updated.id ? { ...booking, status: updated.status } : booking)));
-      toast.success('Booking cancelled.');
+      setBookings((current) => current.map((booking) => (booking.id === updated.id ? { ...booking, ...updated } : booking)));
+      await reloadUser().catch(() => null);
+      const cancelledPayment = paymentsById[cancelTarget.id];
+      toast.success(
+        cancelledPayment?.status === 'SUCCEEDED'
+          ? 'Booking cancelled. The refund request has been sent to the original payment method.'
+          : 'Booking cancelled.',
+      );
       setCancelTarget(null);
     } catch (err) {
       toast.error(parseApiError(err, 'Unable to cancel this booking.'));
@@ -215,7 +238,7 @@ const MyBookingsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('upcoming')}
-            className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+            className={`flex cursor-pointer items-center gap-2 rounded-[28px] px-4 py-2.5 text-sm font-semibold transition ${
               activeTab === 'upcoming' ? 'bg-[#0A7C6E] text-white' : 'text-[#6B7280] hover:text-[#0A7C6E]'
             }`}
           >
@@ -225,7 +248,7 @@ const MyBookingsPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab('past')}
-            className={`flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+            className={`flex cursor-pointer items-center gap-2 rounded-[28px] px-4 py-2.5 text-sm font-semibold transition ${
               activeTab === 'past' ? 'bg-[#0A7C6E] text-white' : 'text-[#6B7280] hover:text-[#0A7C6E]'
             }`}
           >
@@ -287,7 +310,7 @@ const MyBookingsPage = () => {
                   roomLoading={!Object.prototype.hasOwnProperty.call(roomsById, booking.roomId)}
                   payment={paymentsById[booking.id]}
                   canCancel={canCancel(booking)}
-                  onCancel={setCancelTarget}
+                  onCancel={handleCancelRequest}
                   existingReview={branchId != null ? myReviewByBranchId[branchId] : null}
                   reviewChecked={branchId != null && Object.prototype.hasOwnProperty.call(myReviewByBranchId, branchId)}
                   onWriteReview={handleWriteReview}
@@ -311,6 +334,7 @@ const MyBookingsPage = () => {
 
       <CancelModal
         booking={cancelTarget}
+        payment={cancelTarget ? paymentsById[cancelTarget.id] : null}
         submitting={cancelling}
         onConfirm={handleCancelConfirm}
         onClose={() => setCancelTarget(null)}

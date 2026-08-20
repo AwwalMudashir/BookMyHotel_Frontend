@@ -5,7 +5,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 
 // Purpose: Navbar globe button + dropdown for switching the display country/currency.
 const CurrencySwitcher = ({ buttonClassName = '' }) => {
-  const { country, currency, setCountry } = useCurrency();
+  const { country, setCountry } = useCurrency();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 

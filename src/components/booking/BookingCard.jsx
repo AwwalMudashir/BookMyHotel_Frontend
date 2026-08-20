@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, CalendarDays, CreditCard, Hash, Leaf, MapPin, Star, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarDays, CreditCard, Hash, Leaf, MapPin, Sparkles, Star, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -51,7 +51,8 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
   const roomLink = room?.roomId ? `/rooms/${room.roomId}` : `/rooms/${booking.roomId}`;
   const showPayCta = booking.status === 'PENDING' && (!payment || payment.status === 'PENDING' || payment.status === 'FAILED');
   const payCtaLabel = payment?.status === 'FAILED' ? 'Retry payment' : 'Pay now';
-  const paymentLink = payment?.paymentId ? `/payment/${payment.paymentId}` : `/payment/${booking.id}`;
+  // Use booking.id as the canonical route param (app routing is /payment/:bookingId)
+  const paymentLink = `/payment/${booking.id}`;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -60,10 +61,15 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
   const isEarlyCheckoutCancellation = booking.status === 'CANCELLED'
     && parseISO(booking.checkIn) <= today
     && parseISO(booking.checkOut) > today;
+  const hasBookingDetails = booking.services?.length > 0
+    || (booking.status === 'CONFIRMED' && booking.ecoPointsEarned > 0)
+    || booking.ecoPointsRedeemed > 0
+    || isEarlyCheckoutCancellation
+    || (isCompletedStay && existingReview);
 
   return (
     <article className="flex flex-col gap-4 rounded-[24px] border border-[#E5E7EB] bg-white p-5 shadow-sm transition hover:shadow-md sm:flex-row">
-      <div className="h-40 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#E6F5F3] to-[#DDEEFF] sm:h-auto sm:w-40">
+      <div className="h-44 shrink-0 self-start overflow-hidden rounded-2xl bg-gradient-to-br from-[#E6F5F3] to-[#DDEEFF] sm:w-40">
         {room?.images?.[0] ? (
           <img src={room.images[0]} alt={room.roomTypeName} className="h-full w-full object-cover" />
         ) : (
@@ -110,34 +116,62 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
           </span>
         ) : null}
 
-        {booking.status === 'CONFIRMED' && booking.ecoPointsEarned > 0 ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-[#DCEFEA] bg-[#E6F5F3] px-3 py-2.5 text-xs font-semibold text-[#1D6A2D]">
-            <Leaf className="h-4 w-4 shrink-0" />
-            You earned {booking.ecoPointsEarned} eco point{booking.ecoPointsEarned === 1 ? '' : 's'} for choosing an eco-friendly stay!
-          </div>
-        ) : null}
-
-        {isEarlyCheckoutCancellation ? (
-          <div className="rounded-[22px] border border-[#DBEAFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E40AF] shadow-sm">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-[#1D4ED8]" />
-              <div>
-                <p className="font-semibold">Early checkout cancellation</p>
-                <p className="mt-1 text-xs text-[#334155]">
-                  Your stay was cancelled before checkout, and the room is now available again for other guests.
+        {hasBookingDetails ? (
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+            {booking.services?.length > 0 ? (
+              <div className="min-w-0 rounded-2xl border border-[#DCEFEA] bg-[#F4FBF9] px-3 py-2.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#0A7C6E]">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" /> Stay extras
                 </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {booking.services.map((service) => (
+                    <span key={service.id} className="rounded-full bg-white px-2.5 py-1 text-xs text-[#374151] shadow-sm">
+                      {service.serviceName} × {service.quantity}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
-        ) : null}
+            ) : null}
 
-        {isCompletedStay && existingReview ? (
-          <div className="rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA] p-3">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-[#0A7C6E]">
-              <Star className="h-3.5 w-3.5 fill-[#C9A84C] text-[#C9A84C]" />
-              You reviewed this stay — {existingReview.rating}/5
-            </p>
-            {existingReview.comment ? <p className="mt-1 text-xs text-[#6B7280]">&ldquo;{existingReview.comment}&rdquo;</p> : null}
+            {booking.status === 'CONFIRMED' && booking.ecoPointsEarned > 0 ? (
+              <div className="flex min-w-0 items-start gap-2 rounded-2xl border border-[#DCEFEA] bg-[#E6F5F3] px-3 py-2.5 text-xs font-semibold leading-5 text-[#1D6A2D]">
+                <Leaf className="mt-0.5 h-4 w-4 shrink-0" />
+                You earned {booking.ecoPointsEarned} eco point{booking.ecoPointsEarned === 1 ? '' : 's'} for choosing an eco-friendly stay!
+              </div>
+            ) : null}
+
+            {booking.ecoPointsRedeemed > 0 ? (
+              <div className="flex min-w-0 items-start gap-2 rounded-2xl border border-[#DCEFEA] bg-[#F4FBF9] px-3 py-2.5 text-xs font-semibold leading-5 text-[#0A7C6E]">
+                <Leaf className="mt-0.5 h-4 w-4 shrink-0" />
+                {booking.status === 'CANCELLED'
+                  ? `${booking.ecoPointsRedeemed} eco points were returned to your balance.`
+                  : `${booking.ecoPointsRedeemed} eco points applied — you saved ${formatPrice(booking.ecoPointsDiscount, room?.currency)}.`}
+              </div>
+            ) : null}
+
+            {isEarlyCheckoutCancellation ? (
+              <div className="min-w-0 rounded-2xl border border-[#DBEAFE] bg-[#EFF6FF] px-3 py-2.5 text-sm text-[#1E40AF]">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-[#1D4ED8]" />
+                  <div>
+                    <p className="font-semibold">Early checkout cancellation</p>
+                    <p className="mt-1 text-xs text-[#334155]">
+                      Your stay was cancelled before checkout, and the room is now available again for other guests.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {isCompletedStay && existingReview ? (
+              <div className="min-w-0 rounded-2xl border border-[#E5E7EB] bg-[#F8F9FA] px-3 py-2.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-[#0A7C6E]">
+                  <Star className="h-3.5 w-3.5 fill-[#C9A84C] text-[#C9A84C]" />
+                  You reviewed this stay — {existingReview.rating}/5
+                </p>
+                {existingReview.comment ? <p className="mt-1 text-xs text-[#6B7280]">&ldquo;{existingReview.comment}&rdquo;</p> : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Search, SlidersHorizontal, ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { format, addDays, differenceInDays, isValid, parseISO } from 'date-fns';
+import toast from 'react-hot-toast';
 import Navbar from '../../components/core/Navbar';
 import FilterPanel from '../../components/search/FilterPanel';
 import SearchResultCard from '../../components/search/SearchResultCard';
 import searchApi from '../../api/searchApi';
+import hotelApi from '../../api/hotelApi';
 import { useCurrency } from '../../hooks/useCurrency';
 import { parseApiError } from '../../utils/parseApiError';
 import Footer from '../../components/core/Footer';
@@ -24,31 +25,53 @@ const DEFAULT_FILTERS = {
 };
 const DEFAULT_SORT = 'price_asc';
 const DEFAULT_PAGE = 0;
-const todayString = format(new Date(), 'yyyy-MM-dd');
+const EXCHANGE_RATE_ERROR = /exchange rate not available for currency:\s*([a-z]{3})/i;
+const normalizeHotelIds = (values = []) => [...new Set(
+  values.map((value) => String(value).trim()).filter((value) => /^\d+$/.test(value) && Number(value) > 0),
+)];
+const readInitialSearchState = (searchParams) => {
+  const hotelIdQuery = searchParams.get('hotelIds') || searchParams.get('hotelId') || '';
+  const pageValue = Number(searchParams.get('page'));
+
+  return {
+    filters: {
+      ...DEFAULT_FILTERS,
+      checkIn: searchParams.get('checkIn') || '',
+      checkOut: searchParams.get('checkOut') || '',
+      city: searchParams.get('city') || '',
+      country: searchParams.get('country') || '',
+      minPrice: searchParams.get('minPrice') || '',
+      maxPrice: searchParams.get('maxPrice') || '',
+      roomType: searchParams.get('roomType') || '',
+      maxOccupancy: searchParams.get('maxOccupancy') ? Number(searchParams.get('maxOccupancy')) : null,
+      hotelIds: normalizeHotelIds(hotelIdQuery.split(',')),
+      tag: ['ECO_FRIENDLY', 'WORK_FRIENDLY'].includes(searchParams.get('tag')) ? searchParams.get('tag') : '',
+    },
+    sort: ['price_asc', 'price_desc', 'rating_desc'].includes(searchParams.get('sort'))
+      ? searchParams.get('sort')
+      : DEFAULT_SORT,
+    page: Number.isInteger(pageValue) && pageValue >= 0 ? pageValue : DEFAULT_PAGE,
+  };
+};
 
 const SearchPage = () => {
-  const { currency } = useCurrency();
+  const { currency, setCountry } = useCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [initialSearch] = useState(() => readInitialSearchState(searchParams));
+  const [filters, setFilters] = useState(initialSearch.filters);
   const [results, setResults] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
-  const [currentPage, setCurrentPage] = useState(DEFAULT_PAGE);
-  const [sort, setSort] = useState(DEFAULT_SORT);
+  const [currentPage, setCurrentPage] = useState(initialSearch.page);
+  const [sort, setSort] = useState(initialSearch.sort);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [hotelOptions, setHotelOptions] = useState([]);
+  const [hotelsLoading, setHotelsLoading] = useState(true);
   const debounceRef = useRef(null);
   const mountedRef = useRef(false);
   const resultsRef = useRef(null);
-
-  const nights = useMemo(() => {
-    if (!filters.checkIn || !filters.checkOut) return 0;
-    const start = parseISO(filters.checkIn);
-    const end = parseISO(filters.checkOut);
-    if (!isValid(start) || !isValid(end)) return 0;
-    return Math.max(differenceInDays(end, start), 0);
-  }, [filters.checkIn, filters.checkOut]);
 
   const buildParams = (activeFilters, activeSort, activePage) => {
     const params = {};
@@ -60,7 +83,8 @@ const SearchPage = () => {
     if (activeFilters.maxPrice !== '') params.maxPrice = Number(activeFilters.maxPrice);
     if (activeFilters.roomType) params.roomType = activeFilters.roomType;
     if (activeFilters.maxOccupancy) params.maxOccupancy = activeFilters.maxOccupancy;
-    if (activeFilters.hotelIds?.length) params.hotelId = activeFilters.hotelIds.join(',');
+    const hotelIds = normalizeHotelIds(activeFilters.hotelIds);
+    if (hotelIds.length) params.hotelIds = hotelIds.join(',');
     // Single-tag selection only (per backend contract, `tags` is AND-matched — selecting both
     // would only return rooms that are both eco- and work-friendly, not either one).
     if (activeFilters.tag) params.tags = activeFilters.tag;
@@ -83,7 +107,8 @@ const SearchPage = () => {
     if (activeFilters.maxPrice !== '') params.set('maxPrice', String(activeFilters.maxPrice));
     if (activeFilters.roomType) params.set('roomType', activeFilters.roomType);
     if (activeFilters.maxOccupancy) params.set('maxOccupancy', String(activeFilters.maxOccupancy));
-    if (activeFilters.hotelIds?.length) params.set('hotelId', activeFilters.hotelIds.join(','));
+    const hotelIds = normalizeHotelIds(activeFilters.hotelIds);
+    if (hotelIds.length) params.set('hotelIds', hotelIds.join(','));
     if (activeFilters.tag) params.set('tag', activeFilters.tag);
     if (activeSort && activeSort !== DEFAULT_SORT) params.set('sort', activeSort);
     if (activePage && activePage !== DEFAULT_PAGE) params.set('page', String(activePage));
@@ -101,9 +126,32 @@ const SearchPage = () => {
       setHasSearched(true);
       syncUrl(activeFilters, activeSort, response.number ?? activePage);
     } catch (err) {
-      // Surface the backend's real message (e.g. an unconvertable branch currency in scope)
-      // as-is — never silently retry without filterCurrency, that would just mask it again.
-      setError(parseApiError(err, 'Unable to load rooms.'));
+      const message = parseApiError(err, 'Unable to load rooms.');
+      const unavailableCurrency = message.match(EXCHANGE_RATE_ERROR)?.[1]?.toUpperCase();
+      const hasPriceFilter = activeFilters.minPrice !== '' || activeFilters.maxPrice !== '';
+      const shouldClearPriceFilter = Boolean(
+        unavailableCurrency
+        && hasPriceFilter
+        && unavailableCurrency !== currency,
+      );
+      const shouldSwitchToUsd = Boolean(unavailableCurrency && currency !== 'USD');
+
+      if (shouldSwitchToUsd || shouldClearPriceFilter) {
+        if (shouldSwitchToUsd) setCountry('US');
+        if (shouldClearPriceFilter) {
+          setFilters((current) => ({ ...current, minPrice: '', maxPrice: '' }));
+        }
+
+        setError(null);
+        toast.error(
+          shouldClearPriceFilter
+            ? `${unavailableCurrency} exchange rates are unavailable. Switched to USD and cleared the price range so results can still load accurately.`
+            : `${unavailableCurrency} exchange rates are unavailable. Prices and price filters have been switched to USD.`,
+          { id: 'search-currency-fallback', duration: 7000 },
+        );
+      } else {
+        setError(message);
+      }
       setHasSearched(true);
     } finally {
       setIsLoading(false);
@@ -111,35 +159,35 @@ const SearchPage = () => {
   };
 
   useEffect(() => {
-    const initialFilters = {
-      ...DEFAULT_FILTERS,
-      checkIn: searchParams.get('checkIn') || '',
-      checkOut: searchParams.get('checkOut') || '',
-      city: searchParams.get('city') || '',
-      country: searchParams.get('country') || '',
-      minPrice: searchParams.get('minPrice') || '',
-      maxPrice: searchParams.get('maxPrice') || '',
-      roomType: searchParams.get('roomType') || '',
-      maxOccupancy: searchParams.get('maxOccupancy') ? Number(searchParams.get('maxOccupancy')) : null,
-      hotelIds: searchParams.get('hotelId') ? searchParams.get('hotelId').split(',') : [],
-      tag: ['ECO_FRIENDLY', 'WORK_FRIENDLY'].includes(searchParams.get('tag')) ? searchParams.get('tag') : '',
+    let active = true;
+    hotelApi.getAllHotels(1, 100)
+      .then(({ items }) => {
+        if (active) {
+          setHotelOptions(items.filter((hotel) => hotel.id != null));
+        }
+      })
+      .catch(() => {
+        if (active) setHotelOptions([]);
+      })
+      .finally(() => {
+        if (active) setHotelsLoading(false);
+      });
+
+    return () => {
+      active = false;
     };
-    const initialSort = ['price_asc', 'price_desc', 'rating_desc'].includes(searchParams.get('sort'))
-      ? searchParams.get('sort')
-      : DEFAULT_SORT;
-    const initialPage = Number.isInteger(Number(searchParams.get('page'))) && Number(searchParams.get('page')) >= 0
-      ? Number(searchParams.get('page'))
-      : DEFAULT_PAGE;
+  }, []);
 
-    setFilters(initialFilters);
-    setSort(initialSort);
-    setCurrentPage(initialPage);
-
-    if (initialFilters.checkIn && initialFilters.checkOut) {
-      performSearch(initialFilters, initialPage, initialSort);
+  useEffect(() => {
+    mountedRef.current = true;
+    let initialSearchTimer;
+    if (initialSearch.filters.checkIn && initialSearch.filters.checkOut) {
+      initialSearchTimer = window.setTimeout(() => {
+        performSearch(initialSearch.filters, initialSearch.page, initialSearch.sort);
+      }, 0);
     }
 
-    mountedRef.current = true;
+    return () => window.clearTimeout(initialSearchTimer);
   }, []);
 
   useEffect(() => {
@@ -150,8 +198,6 @@ const SearchPage = () => {
       setCurrentPage(DEFAULT_PAGE);
     }, 300);
     return () => clearTimeout(debounceRef.current);
-    // Re-searching on currency change keeps the price filter's result set accurate as the
-    // user switches currency, not just the labels on the slider.
   }, [filters, currency]);
 
   const handleFilterChange = (key, value) => {
@@ -228,7 +274,13 @@ const SearchPage = () => {
 
           <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
             <div className="hidden lg:block">
-              <FilterPanel filters={filters} onFilterChange={handleFilterChange} onClear={handleClearFilters} />
+              <FilterPanel
+                filters={filters}
+                hotelOptions={hotelOptions}
+                hotelsLoading={hotelsLoading}
+                onFilterChange={handleFilterChange}
+                onClear={handleClearFilters}
+              />
             </div>
 
             <div className="space-y-6">
@@ -378,7 +430,13 @@ const SearchPage = () => {
                 </button>
               </div>
               <div className="overflow-y-auto pr-1">
-                <FilterPanel filters={filters} onFilterChange={handleFilterChange} onClear={() => { handleClearFilters(); setDrawerOpen(false); }} />
+                <FilterPanel
+                  filters={filters}
+                  hotelOptions={hotelOptions}
+                  hotelsLoading={hotelsLoading}
+                  onFilterChange={handleFilterChange}
+                  onClear={() => { handleClearFilters(); setDrawerOpen(false); }}
+                />
               </div>
             </div>
           </div>

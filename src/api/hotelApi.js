@@ -53,6 +53,7 @@ const normalizeHotel = (payload) => {
     starRating: Number(payload?.starRating ?? payload?.rating ?? payload?.averageRating ?? payload?.stars ?? 0) || 0,
     currency: payload?.currency ?? payload?.currencyCode ?? firstBranch?.currency ?? null,
     logoUrl: payload?.logoUrl ?? payload?.imageUrl ?? payload?.image ?? '',
+    longImage: payload?.longImage ?? payload?.long_image ?? payload?.hotelLongImage ?? '',
     images: Array.isArray(payload?.images) ? payload.images : payload?.logoUrl ? [payload.logoUrl] : [],
     branches: normalizedBranches,
     rooms: Array.isArray(payload?.rooms) ? payload.rooms : [],

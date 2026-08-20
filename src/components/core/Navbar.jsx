@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Hotel, Compass, Mail, Menu, Sparkles, X, LogIn, LogOut, UserCircle, LayoutGrid, Leaf } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -32,6 +32,7 @@ const Navbar = ({ variant = 'default' }) => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [authSuccessMessage, setAuthSuccessMessage] = useState('');
+  const authTransitionTimer = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 12);
@@ -45,7 +46,24 @@ const Navbar = ({ variant = 'default' }) => {
   }, [location.pathname]);
 
   useEffect(() => {
+    if (!authOpen && authTransitionTimer.current) {
+      clearTimeout(authTransitionTimer.current);
+      authTransitionTimer.current = null;
+      setAuthSuccessMessage('');
+    }
+  }, [authOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (authTransitionTimer.current) {
+        clearTimeout(authTransitionTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const handleAuthRequired = () => {
+      setAuthSuccessMessage('');
       setAuthMode('login');
       setAuthOpen(true);
     };
@@ -138,10 +156,32 @@ const Navbar = ({ variant = 'default' }) => {
     }
 
     try {
-      await registerUser({ firstName, lastName, email, password });
-      setAuthSuccessMessage('Account created successfully. You can now sign in.');
-      setAuthMode('login');
-      toast.success('Account created successfully. Please sign in.');
+      if (authTransitionTimer.current) {
+        clearTimeout(authTransitionTimer.current);
+      }
+      const response = await registerUser({ firstName, lastName, email, password });
+
+      // Some backends return HTTP 200 with { success: false, message: '...' } — treat that as an error
+      if (response && response.success === false) {
+        const errorMessage = response.message || 'Unable to create your account.';
+        toast.error(errorMessage);
+        return;
+      }
+
+      // If registerUser returned something that looks like an error (no payload and no message), fail safe
+      if (!response || (typeof response === 'object' && Object.keys(response).length === 0)) {
+        toast.error('Unable to create your account. Please try again.');
+        return;
+      }
+
+      const successMsg = response?.message || 'Account created successfully. You can now sign in.';
+      setAuthSuccessMessage(successMsg);
+      toast.success(successMsg);
+
+      // Wait a moment so the user can read the success message, then show the login form
+      authTransitionTimer.current = window.setTimeout(() => {
+        setAuthMode('login');
+      }, 1000);
     } catch (error) {
       // Display the backend error message from response body
       const errorMessage = error?.message || 'Unable to create your account.';
@@ -250,6 +290,7 @@ const Navbar = ({ variant = 'default' }) => {
                 <button
                   type="button"
                   onClick={() => {
+                    setAuthSuccessMessage('');
                     setAuthMode('login');
                     setAuthOpen(true);
                   }}
@@ -260,6 +301,7 @@ const Navbar = ({ variant = 'default' }) => {
                 <button
                   type="button"
                   onClick={() => {
+                    setAuthSuccessMessage('');
                     setAuthMode('signup');
                     setAuthOpen(true);
                   }}

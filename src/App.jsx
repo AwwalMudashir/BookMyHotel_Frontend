@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import AppRouter from './routes/AppRouter';
+import FormRefreshGuard from './components/core/FormRefreshGuard';
 import './App.css';
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -21,6 +22,7 @@ function App() {
             <BookingProvider>
               <div className="min-h-screen bg-[#F8F9FA]">
                 <Toaster position="top-right" />
+                <FormRefreshGuard />
                 <AppRouter />
               </div>
             </BookingProvider>

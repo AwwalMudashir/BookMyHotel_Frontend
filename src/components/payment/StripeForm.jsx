@@ -2,74 +2,124 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { Loader2, Lock } from 'lucide-react';
+import PolicyInfoModal from '../booking/PolicyInfoModal';
+import useUnsavedChangesWarning from '../../hooks/useUnsavedChangesWarning';
 
-// Purpose: Stripe Payment Element form — renders whatever payment methods the PaymentIntent
-// supports (card, wallets, etc.) without us hardcoding any of them.
-const StripeForm = ({ paymentId, bookingId, payLabel }) => {
+// Purpose: renders the payment methods supported by the current Stripe PaymentIntent.
+const StripeForm = ({ bookingId, payLabel }) => {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policyReviewed, setPolicyReviewed] = useState(false);
+  const [paymentDetailsEntered, setPaymentDetailsEntered] = useState(false);
+  const [paymentElementReady, setPaymentElementReady] = useState(false);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!stripe || !elements) return;
+  useUnsavedChangesWarning(paymentDetailsEntered && !submitting);
+
+  const processPayment = async () => {
+    if (!stripe || !elements || !paymentElementReady) {
+      setErrorMessage('The secure payment form is not ready. Please reload the page and try again.');
+      return;
+    }
 
     setSubmitting(true);
     setErrorMessage('');
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/bookings/${bookingId}/payment-return`,
-      },
-    });
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/bookings/${bookingId}/payment-return`,
+        },
+      });
 
-    // Payment methods that need a redirect (3D Secure, some wallets) navigate the browser
-    // away to return_url before this promise ever resolves — this code never runs for those.
-    // For methods that don't redirect (most card payments), it resolves here — but a missing
-    // error only means Stripe accepted the card, not that the booking is confirmed. The
-    // webhook still has to land on the backend, so send the user to the page that actually
-    // polls GET /payments/{bookingId} for the real outcome.
-    if (error) {
-      setErrorMessage(error.message || 'Something went wrong confirming your payment.');
+      if (error) {
+        setErrorMessage(error.message || 'Something went wrong confirming your payment.');
+        return;
+      }
+
+      // The return page verifies the server-side result and recovers missed local webhooks.
+      navigate(`/bookings/${bookingId}/payment-return`);
+    } catch (error) {
+      setErrorMessage(error?.message || 'The secure payment form could not be submitted. Please reload and try again.');
+    } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!stripe || !elements || !paymentElementReady) return;
+    if (!policyReviewed) {
+      setPolicyOpen(true);
       return;
     }
+    processPayment();
+  };
 
-    navigate(`/bookings/${bookingId}/payment-return`);
+  const handlePolicyContinue = () => {
+    setPolicyReviewed(true);
+    setPolicyOpen(false);
+    processPayment();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <PaymentElement />
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <PaymentElement
+          onReady={() => {
+            setPaymentElementReady(true);
+            setErrorMessage('');
+          }}
+          onLoaderror={(event) => {
+            setPaymentElementReady(false);
+            setErrorMessage(event?.error?.message || 'The secure payment form could not load. Please reload the page.');
+          }}
+          onChange={(event) => {
+            setPaymentDetailsEntered(!event.empty);
+            if (event.error) setErrorMessage(event.error.message);
+          }}
+        />
 
-      {errorMessage ? <p className="text-sm font-medium text-[#9B1E1E]">{errorMessage}</p> : null}
+        {errorMessage ? <p className="text-sm font-medium text-[#9B1E1E]">{errorMessage}</p> : null}
 
-      <button
-        type="submit"
-        disabled={!stripe || !elements || submitting}
-        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#065E52] disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
-        {submitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Processing…
-          </>
-        ) : (
-          <>
-            <Lock className="h-4 w-4" />
-            {payLabel}
-          </>
-        )}
-      </button>
+        <button
+          type="submit"
+          disabled={!stripe || !elements || !paymentElementReady || submitting}
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#0A7C6E] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#065E52] disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Lock className="h-4 w-4" />
+              {payLabel}
+            </>
+          )}
+        </button>
 
-      <p className="flex items-center justify-center gap-1.5 text-xs text-[#6B7280]">
-        <Lock className="h-3 w-3" />
-        Payments are securely processed by Stripe.
-      </p>
-    </form>
+        <p className="flex items-center justify-center gap-1.5 text-xs text-[#6B7280]">
+          <Lock className="h-3 w-3" />
+          Payments are securely processed by Stripe.
+        </p>
+      </form>
+
+      {policyOpen ? (
+        <PolicyInfoModal
+          context="payment"
+          busy={submitting}
+          onClose={() => setPolicyOpen(false)}
+          onContinue={handlePolicyContinue}
+          continueLabel={payLabel}
+        />
+      ) : null}
+    </>
   );
 };
 

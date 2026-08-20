@@ -83,8 +83,8 @@ const ManagerDashboard = () => {
 			)}
 
 			{creating ? (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
-					<div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+				<div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 sm:p-6">
+					<div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:p-6">
 						<div className="flex items-start justify-between">
 							<div>
 								<h2 className="text-lg font-semibold text-slate-900">{creating === 'admin' ? 'Create Admin' : 'Create Hotel Manager'}</h2>

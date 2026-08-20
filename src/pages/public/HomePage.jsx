@@ -1,6 +1,8 @@
 import Navbar from '../../components/core/Navbar';
 import Footer from '../../components/core/Footer';
 import HomeHero from '../components/HomeHero';
+import HomePromotionsCarousel from '../components/HomePromotionsCarousel';
+import HomePromoSubscription from '../components/HomePromoSubscription';
 import FeaturedHotels from '../components/FeaturedHotels';
 import PopularRooms from '../components/PopularRooms';
 import SiteFeatures from '../components/SiteFeatures';
@@ -13,6 +15,8 @@ const HomePage = () => (
     <HomeHero />
     <FeaturedHotels />
     <PopularRooms />
+    <HomePromotionsCarousel />
+    <HomePromoSubscription />
     <SiteFeatures />
     <AboutBookMyHotel />
     <HomeCta />

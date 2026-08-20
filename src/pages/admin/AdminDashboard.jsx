@@ -5,6 +5,8 @@ import { BedDouble, Coins, Info, TrendingUp } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import KpiCard from '../../components/admin/KpiCard';
 import RevenueChart from '../../components/admin/RevenueChart';
+import HotelPerformanceChart from '../../components/admin/HotelPerformanceChart';
+import RevenueShareChart from '../../components/admin/RevenueShareChart';
 import Spinner from '../../components/core/Spinner';
 import analyticsApi from '../../api/analyticsApi';
 import hotelApi from '../../api/hotelApi';
@@ -22,13 +24,8 @@ const formatUsd = (value) => {
 const todayString = format(new Date(), 'yyyy-MM-dd');
 const defaultStart = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
-// Purpose: Platform-wide admin analytics dashboard.
-// The revenue/ADR figures here sum totalPrice across every hotel with no currency
-// conversion — a genuinely blended number only when every hotel shares one currency, which
-// isn't guaranteed platform-wide. Shown as a plain (unlabeled) figure with an explicit caveat
-// rather than pretending it's a single-currency total. The per-hotel chart below only plots
-// hotels whose own branches all share one currency, so at least those bars are individually
-// honest, even though the platform-wide KPI above them isn't currency-pure.
+// Purpose: Platform-wide admin analytics dashboard. The backend normalizes revenue and ADR to
+// USD, so hotels remain comparable even when their branches charge in different currencies.
 const AdminDashboard = () => {
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(todayString);
@@ -40,6 +37,7 @@ const AdminDashboard = () => {
   const [hotels, setHotels] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const [chartError, setChartError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +61,7 @@ const AdminDashboard = () => {
     let cancelled = false;
     const loadChart = async () => {
       setChartLoading(true);
+      setChartError('');
       try {
         const { items } = await hotelApi.getAllHotels(1, 100);
         if (cancelled) return;
@@ -70,25 +69,32 @@ const AdminDashboard = () => {
 
         const results = await Promise.allSettled(
           items.map(async (hotel) => {
-            const [hotelSummary, branches] = await Promise.all([
-              analyticsApi.getHotelSummary(hotel.id, { startDate, endDate }),
-              hotelApi.getHotelBranches(hotel.id),
-            ]);
-            const currencies = new Set(branches.map((branch) => branch.currency).filter(Boolean));
-            if (currencies.size !== 1) return null;
+            const hotelSummary = await analyticsApi.getHotelSummary(hotel.id, { startDate, endDate });
             return {
               hotelId: hotel.id,
               hotelName: hotel.name,
-              revenue: hotelSummary.revenue ?? 0,
-              currency: [...currencies][0],
+              revenue: Number(hotelSummary.revenue ?? 0),
+              roomNightsBooked: Number(hotelSummary.roomNightsBooked ?? 0),
+              averageDailyRate: Number(hotelSummary.averageDailyRate ?? 0),
+              currency: hotelSummary.currency || 'USD',
             };
           }),
         );
         if (!cancelled) {
-          setChartData(results.filter((r) => r.status === 'fulfilled' && r.value).map((r) => r.value));
+          const successful = results
+            .filter((result) => result.status === 'fulfilled')
+            .map((result) => result.value)
+            .sort((a, b) => b.revenue - a.revenue);
+          setChartData(successful);
+          if (successful.length !== items.length) {
+            setChartError(`${items.length - successful.length} hotel report${items.length - successful.length === 1 ? '' : 's'} could not be loaded.`);
+          }
         }
-      } catch {
-        if (!cancelled) setChartData([]);
+      } catch (err) {
+        if (!cancelled) {
+          setChartData([]);
+          setChartError(parseApiError(err, 'Unable to load hotel comparisons right now.'));
+        }
       } finally {
         if (!cancelled) setChartLoading(false);
       }
@@ -105,18 +111,18 @@ const AdminDashboard = () => {
             <h1 className="font-[Playfair_Display] text-2xl font-semibold">Analytics</h1>
             <p className="mt-1 text-sm text-[#6B7280]">Platform-wide performance for the selected range.</p>
           </div>
-          <div className="flex items-end gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
-            <div>
+          <div className="flex w-full flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm sm:w-auto sm:flex-row sm:items-end">
+            <div className="flex-1 sm:flex-none">
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-slate-500">From</label>
               <input
                 type="date"
                 value={startDate}
                 max={endDate}
                 onChange={(event) => setStartDate(event.target.value)}
-                className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:ring-2 focus:ring-[#0A7C6E]/15"
+                className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:ring-2 focus:ring-[#0A7C6E]/15"
               />
             </div>
-            <div>
+            <div className="flex-1 sm:flex-none">
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-slate-500">To</label>
               <input
                 type="date"
@@ -124,7 +130,7 @@ const AdminDashboard = () => {
                 min={startDate}
                 max={todayString}
                 onChange={(event) => setEndDate(event.target.value)}
-                className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:ring-2 focus:ring-[#0A7C6E]/15"
+                className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:ring-2 focus:ring-[#0A7C6E]/15"
               />
             </div>
           </div>
@@ -154,12 +160,22 @@ const AdminDashboard = () => {
               />
             </div>
 
+            <div className="mt-6 flex items-start gap-3 rounded-[24px] border border-[#CFE7E1] bg-[#F4FBF9] p-5 text-sm text-[#425466]">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#0A7C6E]" />
+              <div>
+                <p className="font-semibold text-[#1A1A2E]">How this analysis is calculated</p>
+                <p className="mt-1 leading-relaxed">
+                  Only confirmed bookings whose check-in falls inside the selected range are included. Revenue is each booking’s final total converted to USD, room nights are the full booked stay length, and ADR is revenue divided by room nights.
+                </p>
+              </div>
+            </div>
+
             <div className="mt-6 rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-[Playfair_Display] text-lg font-semibold text-[#1A1A2E]">Revenue by hotel</h2>
-                <span className="flex items-center gap-1.5 text-xs text-[#6B7280]" title="Hotels whose branches use more than one currency are left out — their totals aren't comparable to a single number.">
+                <span className="flex items-center gap-1.5 text-xs text-[#6B7280]" title="Every hotel total is converted to USD by the analytics API.">
                   <Info className="h-3.5 w-3.5" />
-                  Single-currency hotels only
+                  All hotels · USD normalized
                 </span>
               </div>
               {chartLoading ? (
@@ -167,6 +183,25 @@ const AdminDashboard = () => {
               ) : (
                 <RevenueChart data={chartData} />
               )}
+              {chartError ? <p className="mt-3 text-xs font-medium text-[#9B1E1E]">{chartError}</p> : null}
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-5">
+              <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-sm lg:col-span-3">
+                <div className="mb-4">
+                  <h2 className="font-[Playfair_Display] text-lg font-semibold text-[#1A1A2E]">Stay volume and daily rate</h2>
+                  <p className="mt-1 text-xs text-[#6B7280]">Room nights show booking volume; the line shows USD revenue earned per room night.</p>
+                </div>
+                {chartLoading ? <div className="flex justify-center py-12"><Spinner /></div> : <HotelPerformanceChart data={chartData} />}
+              </div>
+
+              <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-sm lg:col-span-2">
+                <div className="mb-4">
+                  <h2 className="font-[Playfair_Display] text-lg font-semibold text-[#1A1A2E]">Revenue share</h2>
+                  <p className="mt-1 text-xs text-[#6B7280]">How confirmed revenue is distributed across hotels.</p>
+                </div>
+                {chartLoading ? <div className="flex justify-center py-12"><Spinner /></div> : <RevenueShareChart data={chartData} />}
+              </div>
             </div>
 
             <div className="mt-6 rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-sm">

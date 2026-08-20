@@ -11,11 +11,28 @@ export const amenityMeta = {
   pool: { label: 'Pool', icon: Waves },
 };
 
+const humanize = (str) => {
+  if (!str) return '';
+  // Replace underscores and dashes with spaces
+  const withSpaces = str.replace(/[_-]/g, ' ');
+  // Insert spaces between camelCase boundaries: fooBar -> foo Bar
+  const spaced = withSpaces.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  // Capitalize first letter of each word
+  return spaced
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
+
 export const listAmenities = (amenities) =>
   amenities
     ? Object.entries(amenities)
         .filter(([, value]) => Boolean(value))
-        .map(([key]) => amenityMeta[key] || { key, label: key, icon: null })
+        .map(([key]) => {
+          if (amenityMeta[key]) return amenityMeta[key];
+          return { key, label: humanize(key), icon: null };
+        })
     : [];
 
 export default amenityMeta;

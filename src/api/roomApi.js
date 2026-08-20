@@ -23,6 +23,7 @@ const normalizeRoomDetail = (payload) => ({
   description: payload?.description || payload?.roomDescription || '',
   amenities: payload?.amenities && typeof payload.amenities === 'object' ? payload.amenities : {},
   images: Array.isArray(payload?.images) ? payload.images : [],
+  publicIds: Array.isArray(payload?.publicIds) ? payload.publicIds : [],
   tags: Array.isArray(payload?.tags) ? payload.tags : [],
 });
 
@@ -53,10 +54,20 @@ const roomApi = {
     return res.data;
   },
 
+  async deleteRoomImage(branchId, id, publicId, url) {
+    const params = {};
+    if (publicId) params.publicId = publicId;
+    if (url) params.url = url;
+    const res = await axiosInstance.delete(`/room/branches/${branchId}/${id}/images`, { params });
+    return res.data;
+  },
+
+
   async getRoomById(roomId) {
     const res = await axiosInstance.get(`/room/${roomId}`);
     return normalizeRoomDetail(res.data);
   },
+
 };
 
 export default roomApi;

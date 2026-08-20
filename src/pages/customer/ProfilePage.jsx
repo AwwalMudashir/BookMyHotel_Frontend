@@ -25,14 +25,22 @@ const getPasswordStrength = (value) => {
     return { checks, score, color };
 };
 
+const profileToForm = (profile) => ({
+    firstName: profile?.firstName || profile?.first_name || '',
+    lastName: profile?.lastName || profile?.last_name || '',
+    email: profile?.email || '',
+    gender: profile?.gender || profile?.Gender || '',
+    emailNotifications: Boolean(profile?.emailNotifications ?? profile?.email_notifications),
+});
+
 const ProfilePage = () => {
-    const { user } = useAuth();
+    const { user, reloadUser } = useAuth();
     const [activeTab, setActiveTab] = useState('personal');
-    const [profile, setProfile] = useState(null);
+    const [profile, setProfile] = useState(user);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
-    const [form, setForm] = useState({ firstName: '', lastName: '', email: '', gender: '' });
+    const [form, setForm] = useState(() => profileToForm(user));
     const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
     const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
     const [passwordError, setPasswordError] = useState('');
@@ -50,15 +58,10 @@ const ProfilePage = () => {
 
         const loadProfile = async () => {
             try {
-                const response = await userApi.getMe();
+                const response = await reloadUser();
                 if (isMounted) {
                     setProfile(response);
-                    setForm({
-                        firstName: response?.firstName || response?.first_name || '',
-                        lastName: response?.lastName || response?.last_name || '',
-                        email: response?.email || '',
-                        gender: response?.gender || response?.Gender || '',
-                    });
+                    setForm(profileToForm(response));
                 }
             } catch (err) {
                 if (isMounted) {
@@ -76,7 +79,7 @@ const ProfilePage = () => {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [reloadUser]);
 
     const validateForm = () => {
         const nextErrors = {};
@@ -89,6 +92,7 @@ const ProfilePage = () => {
     const handleSaveProfile = async (event) => {
         event.preventDefault();
         if (!validateForm()) return;
+        const profileForm = event.currentTarget;
 
         setSaving(true);
         setError('');
@@ -98,9 +102,17 @@ const ProfilePage = () => {
                 firstName: form.firstName.trim(),
                 lastName: form.lastName.trim(),
                 gender: form.gender || null,
+                emailNotifications: form.emailNotifications,
             };
             await userApi.updateMe(payload);
+            const updatedProfile = await reloadUser();
+            setProfile(updatedProfile);
             toast.success('Your profile details were updated.');
+            window.requestAnimationFrame(() => {
+                if (profileForm.isConnected) {
+                    profileForm.dispatchEvent(new Event('form:committed', { bubbles: true }));
+                }
+            });
         } catch (err) {
             setError(err.message || 'We could not update your profile.');
         } finally {
@@ -320,6 +332,21 @@ const ProfilePage = () => {
                                 </select>
                             </div>
 
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <label className="flex items-center gap-3 text-sm font-medium text-slate-900">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.emailNotifications}
+                                        onChange={(event) => setForm({ ...form, emailNotifications: event.target.checked })}
+                                        className="h-4 w-4 rounded border-slate-300 bg-white text-[#0A7C6E] cursor-pointer"
+                                    />
+                                    Receive email notifications for promos and deal alerts
+                                </label>
+                                <p className="mt-2 text-sm text-slate-500">
+                                    You can change this preference at any time from your profile.
+                                </p>
+                            </div>
+
                             <button
                                 type="submit"
                                 disabled={saving}
@@ -441,13 +468,26 @@ const ProfilePage = () => {
                                 </div>
 
                                 <p className="mt-4 text-sm font-medium text-slate-700">
-                                    You earn points automatically whenever a booking at an eco-friendly room is confirmed — the more sustainable
-                                    stays you book, the higher this total climbs.
+                                    Your current balance is worth USD {((profile?.ecoPoints ?? user?.ecoPoints ?? 0) / 10).toFixed(2)} toward the room price of any stay.
                                 </p>
 
-                                <div className="mt-6 rounded-2xl border border-[#D9EBDD] bg-[#F7FCF8] px-4 py-3 text-sm text-slate-600">
-                                    This is a running score, not a balance to spend — there's nothing to redeem it for yet. Look out for the
-                                    "Eco-friendly" tag on room listings to keep earning.
+                                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                                    <div className="rounded-2xl border border-[#D9EBDD] bg-white/80 p-4">
+                                        <p className="text-sm font-semibold text-slate-900">Earn</p>
+                                        <p className="mt-1 text-sm leading-relaxed text-slate-600">Get 5 points for every night in a room marked “Eco-friendly” once your booking is confirmed.</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-[#D9EBDD] bg-white/80 p-4">
+                                        <p className="text-sm font-semibold text-slate-900">Redeem</p>
+                                        <p className="mt-1 text-sm leading-relaxed text-slate-600">Every 10 points gives USD 1 off. We convert that value into the room’s payment currency.</p>
+                                    </div>
+                                    <div className="rounded-2xl border border-[#D9EBDD] bg-white/80 p-4">
+                                        <p className="text-sm font-semibold text-slate-900">Choose</p>
+                                        <p className="mt-1 text-sm leading-relaxed text-slate-600">Use the toggle and slider in a booking summary to choose exactly how many available points to spend.</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 rounded-2xl border border-[#D9EBDD] bg-[#F7FCF8] px-4 py-3 text-sm leading-relaxed text-slate-600">
+                                    Eco points can discount any room after a promo code is applied, but they do not discount optional services. Redeemed points are reserved when you create the booking and returned if you cancel it. Any points earned by a later-cancelled eco booking are removed.
                                 </div>
                             </div>
                         </div>

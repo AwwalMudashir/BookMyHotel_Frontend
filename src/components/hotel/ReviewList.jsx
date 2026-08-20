@@ -4,6 +4,8 @@ import ReviewCard from './ReviewCard';
 import AverageRating from '../review/AverageRating';
 import reviewApi from '../../api/reviewApi';
 import { parseApiError } from '../../utils/parseApiError';
+import ReviewForm from '../review/ReviewForm';
+import { useAuth } from '../../hooks/useAuth';
 
 const PAGE_SIZE = 5;
 
@@ -11,10 +13,13 @@ const PAGE_SIZE = 5;
 // GET /branches/{branchId}/reviews. Mount with a `key={branchId}` from the parent so switching
 // branches remounts fresh at page 0 instead of needing a reset effect.
 const ReviewList = ({ branchId }) => {
+  const { isAuthenticated } = useAuth();
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [writeOpen, setWriteOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,12 +37,28 @@ const ReviewList = ({ branchId }) => {
     };
     load();
     return () => { cancelled = true; };
-  }, [branchId, page]);
+  }, [branchId, page, refreshKey]);
 
   const reviews = data?.reviews || [];
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
   const averageRating = data?.averageRating ?? 0;
+
+  const handleWriteClick = () => {
+    if (isAuthenticated) {
+      setWriteOpen(true);
+    } else {
+      // Signal the global auth modal to open (Navbar listens for this event)
+      window.dispatchEvent(new Event('auth:required'));
+    }
+  };
+
+  const handleSubmitted = (review) => {
+    setWriteOpen(false);
+    // Force a reload of reviews (reset to first page and bump refresh key)
+    setPage(0);
+    setRefreshKey((k) => k + 1);
+  };
 
   return (
     <div>
@@ -46,7 +67,18 @@ const ReviewList = ({ branchId }) => {
           <h2 className="font-[Playfair_Display] text-2xl font-semibold text-[#1A1A2E]">Guest reviews</h2>
           <p className="mt-1 text-sm text-[#6B7280]">What guests said about their stay.</p>
         </div>
-        {!loading && !error ? <AverageRating averageRating={averageRating} totalElements={totalElements} /> : null}
+
+        <div className="flex items-center gap-3">
+          {!loading && !error ? <AverageRating averageRating={averageRating} totalElements={totalElements} /> : null}
+          {/* Write / Login CTA */}
+          <button
+            type="button"
+            onClick={handleWriteClick}
+            className="rounded-2xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-[#0A7C6E] transition hover:bg-[#E6F5F3]"
+          >
+            {isAuthenticated ? 'Write a review' : 'Log in to write a review'}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -60,7 +92,16 @@ const ReviewList = ({ branchId }) => {
         </div>
       ) : reviews.length === 0 ? (
         <div className="rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#F8F9FA] p-8 text-center text-sm text-[#6B7280]">
-          No reviews yet for this branch.
+          <p>No reviews yet for this branch.</p>
+          <div className="mt-4 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={handleWriteClick}
+              className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#0A7C6E] transition hover:bg-[#E6F5F3]"
+            >
+              {isAuthenticated ? 'Be the first to write a review' : 'Log in to write a review'}
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -93,6 +134,10 @@ const ReviewList = ({ branchId }) => {
           ) : null}
         </>
       )}
+
+      {writeOpen ? (
+        <ReviewForm branchId={branchId} onClose={() => setWriteOpen(false)} onSubmitted={handleSubmitted} />
+      ) : null}
     </div>
   );
 };

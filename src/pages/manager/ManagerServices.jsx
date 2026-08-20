@@ -12,11 +12,11 @@ const ManagerServices = () => {
 
   return (
     <AdminLayout>
-      <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-6">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Property services</p>
-          <h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold text-[#1A1A2E]">Add a service</h1>
-          <p className="mt-2 text-sm text-[#6B7280]">Create bar, restaurant, car hire, spa, or tour add-ons guests can book alongside a room.</p>
+          <h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold text-[#1A1A2E]">Manage services</h1>
+          <p className="mt-2 text-sm text-[#6B7280]">Create and manage paid extras for one branch or every branch in your hotel.</p>
         </div>
 
         {role !== 'HOTEL_MANAGER' ? (

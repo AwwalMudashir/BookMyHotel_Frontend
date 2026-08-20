@@ -29,7 +29,7 @@ const CustomTooltip = ({ active, payload }) => {
 
 const RevenueChart = ({ data = [] }) => {
   if (data.length === 0) {
-    return <p className="py-10 text-center text-sm text-[#6B7280]">No single-currency hotel revenue to compare for this range.</p>;
+    return <p className="py-10 text-center text-sm text-[#6B7280]">No hotel analytics are available for this range.</p>;
   }
 
   return (

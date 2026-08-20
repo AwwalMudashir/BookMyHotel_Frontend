@@ -221,9 +221,10 @@ const HomeHero = () => {
                 Search rooms
               </Link>
             </div>
+
           </div>
         </div>
-      </section>
+        </section>
 
       <div className="relative z-20 mx-4 -mt-8 sm:mx-8 lg:mx-16" ref={searchBoxRef}>
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.16)]">

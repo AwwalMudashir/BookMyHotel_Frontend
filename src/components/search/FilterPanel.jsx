@@ -5,12 +5,6 @@ import { ROOM_TAG_OPTIONS } from '../../utils/roomTags';
 
 const roomTypes = ['Standard', 'Deluxe', 'Suite', 'Presidential Suite'];
 const occupancyOptions = [1, 2, 3, 4, 5, 6];
-const hotelOptions = [
-  { id: 'marriott', label: 'Marriott', count: 12 },
-  { id: 'hilton', label: 'Hilton', count: 9 },
-  { id: 'hyatt', label: 'Hyatt', count: 7 },
-  { id: 'four-seasons', label: 'Four Seasons', count: 4 },
-];
 
 const todayString = format(new Date(), 'yyyy-MM-dd');
 
@@ -49,7 +43,7 @@ const Section = ({ title, children }) => (
   </div>
 );
 
-const FilterPanel = ({ filters, onFilterChange, onClear }) => {
+const FilterPanel = ({ filters, hotelOptions = [], hotelsLoading = false, onFilterChange, onClear }) => {
   const { symbol } = useCurrency();
   const checkInDate  = filters.checkIn  ? parseISO(filters.checkIn)  : null;
   const checkOutDate = filters.checkOut ? parseISO(filters.checkOut) : null;
@@ -301,16 +295,21 @@ const FilterPanel = ({ filters, onFilterChange, onClear }) => {
       {/* ── HOTEL CHAIN ─────────────────────────────────────────────────────── */}
       <Section title="Hotel chain">
         <div className="flex flex-col gap-2">
-          {hotelOptions.map((hotel) => {
-            const checked = filters.hotelIds?.includes(hotel.id);
+          {hotelsLoading ? (
+            <p className="py-2 text-sm text-slate-400">Loading hotel chains...</p>
+          ) : hotelOptions.length === 0 ? (
+            <p className="py-2 text-sm text-slate-400">No hotel chains are currently available.</p>
+          ) : hotelOptions.map((hotel) => {
+            const hotelId = String(hotel.id);
+            const checked = filters.hotelIds?.includes(hotelId);
             return (
               <button
-                key={hotel.id}
+                key={hotelId}
                 type="button"
                 onClick={() => {
                   const nextIds = checked
-                    ? filters.hotelIds.filter((id) => id !== hotel.id)
-                    : [...(filters.hotelIds || []), hotel.id];
+                    ? filters.hotelIds.filter((id) => id !== hotelId)
+                    : [...(filters.hotelIds || []), hotelId];
                   onFilterChange('hotelIds', nextIds);
                 }}
                 className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-left transition ${
@@ -325,13 +324,15 @@ const FilterPanel = ({ filters, onFilterChange, onClear }) => {
                       ? 'border-[#0A7C6E] bg-[#0A7C6E] text-white'
                       : 'border-slate-300 bg-white text-transparent'
                   }`}>✓</span>
-                  <span className="text-sm font-medium text-slate-800">{hotel.label}</span>
+                  <span className="text-sm font-medium text-slate-800">{hotel.name}</span>
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  checked ? 'bg-[#0A7C6E]/10 text-[#065E52]' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {hotel.count}
-                </span>
+                {hotel.starRating > 0 ? (
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    checked ? 'bg-[#0A7C6E]/10 text-[#065E52]' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {hotel.starRating} star
+                  </span>
+                ) : null}
               </button>
             );
           })}

@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { DEFAULT_COUNTRY, findCountryConfig } from '../utils/countryCurrency';
+import { DEFAULT_COUNTRY, findCountryConfig, countryCurrencyConfig } from '../utils/countryCurrency';
 
 const STORAGE_KEY = 'bmh_currency_pref';
 // frankfurter.app now 301-redirects to frankfurter.dev's versioned API; the redirect response
@@ -115,6 +115,31 @@ export const CurrencyProvider = ({ children }) => {
   const [rates, setRates] = useState(null);
   const [countryResolved, setCountryResolved] = useState(Boolean(stored));
   const [ratesAttempted, setRatesAttempted] = useState(false);
+  const ratesRef = useRef(null);
+  const countryRef = useRef(initialConfig.code);
+
+  const applyCountryConfig = useCallback((requestedConfig, notifyOnFallback = true) => {
+    if (!requestedConfig) return;
+
+    const activeRates = ratesRef.current;
+    const rateUnavailable = activeRates
+      && requestedConfig.currency !== 'USD'
+      && !Object.prototype.hasOwnProperty.call(activeRates, requestedConfig.currency);
+    const nextConfig = rateUnavailable ? findCountryConfig('US') : requestedConfig;
+
+    countryRef.current = nextConfig.code;
+    setCountryState(nextConfig.code);
+    setCurrencyState(nextConfig.currency);
+    setSymbolState(nextConfig.symbol);
+    persistPreference(nextConfig.code, nextConfig.currency);
+
+    if (rateUnavailable && notifyOnFallback) {
+      toast.error(`Exchange rates for ${requestedConfig.currency} are unavailable. Prices have been switched to USD.`, {
+        id: 'currency-rate-fallback',
+        duration: 4000,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (stored) return undefined;
@@ -124,17 +149,13 @@ export const CurrencyProvider = ({ children }) => {
       const code = await resolveDefaultCountry();
       if (cancelled) return;
       const config = findCountryConfig(code) || initialConfig;
-      setCountryState(config.code);
-      setCurrencyState(config.currency);
-      setSymbolState(config.symbol);
-      persistPreference(config.code, config.currency);
+      applyCountryConfig(config);
       setCountryResolved(true);
     };
 
     resolve();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [applyCountryConfig, initialConfig, stored]);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,7 +164,12 @@ export const CurrencyProvider = ({ children }) => {
       try {
         const data = await fetchWithTimeout(RATES_URL, 8000);
         if (cancelled) return;
-        setRates({ USD: 1, ...(data?.rates || {}) });
+        const nextRates = { USD: 1, ...(data?.rates || {}) };
+        ratesRef.current = nextRates;
+        setRates(nextRates);
+
+        const activeConfig = findCountryConfig(countryRef.current) || initialConfig;
+        applyCountryConfig(activeConfig);
       } catch {
         // Keep whatever rates we already have (or null) — convert()/format() degrade gracefully.
       } finally {
@@ -157,38 +183,57 @@ export const CurrencyProvider = ({ children }) => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [applyCountryConfig, initialConfig]);
 
   const setCountry = (countryCode) => {
     const config = findCountryConfig(countryCode);
     if (!config) return;
-    setCountryState(config.code);
-    setCurrencyState(config.currency);
-    setSymbolState(config.symbol);
-    persistPreference(config.code, config.currency);
+    applyCountryConfig(config);
+  };
+
+  // Normalize an incoming currency identifier (ISO code or a symbol) into an ISO code we can use with the rates lookup.
+  const normalizeCurrencyCode = (input) => {
+    if (!input) return null;
+    const asStr = String(input).trim();
+    // Already looks like ISO (3 letters)
+    if (/^[A-Za-z]{3}$/.test(asStr)) return asStr.toUpperCase();
+    // Try matching known entries by currency code or symbol
+    const byCurrency = countryCurrencyConfig.find((c) => c.currency === asStr.toUpperCase());
+    if (byCurrency) return byCurrency.currency;
+    const bySymbol = countryCurrencyConfig.find((c) => c.symbol === asStr || c.currency === asStr);
+    if (bySymbol) return bySymbol.currency;
+    // Last-resort: if value is a common symbol like '$' or '£', map to USD/GBP heuristically
+    if (asStr === '$' || asStr === 'USD' || asStr.toUpperCase() === 'US$') return 'USD';
+    if (asStr === '£' || asStr.toUpperCase() === 'GBP') return 'GBP';
+    if (asStr === '€' || asStr.toUpperCase() === 'EUR') return 'EUR';
+    return asStr.toUpperCase();
   };
 
   const convert = (amount, fromCurrency) => {
     const numericAmount = Number(amount);
     if (Number.isNaN(numericAmount)) return null;
-    const source = fromCurrency || currency;
-    if (source === currency) return numericAmount;
-    if (!rates || !(source in rates) || !(currency in rates)) return null;
+    const sourceRaw = fromCurrency || currency;
+    const source = normalizeCurrencyCode(sourceRaw);
+    const target = normalizeCurrencyCode(currency);
+    if (!source || !target) return null;
+    if (source === target) return numericAmount;
+    if (!rates || !(source in rates) || !(target in rates)) return null;
     const usd = numericAmount / rates[source];
-    return usd * rates[currency];
+    return usd * rates[target];
   };
 
   const format = (amount, fromCurrency) => {
     if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return '—';
     const numericAmount = Number(amount);
-    const source = fromCurrency || currency;
-    const converted = convert(numericAmount, source);
+    const sourceRaw = fromCurrency || currency;
+    const source = normalizeCurrencyCode(sourceRaw) || sourceRaw;
+    const converted = convert(numericAmount, sourceRaw);
     if (converted === null) {
       // Can't convert (rates not loaded yet, or an unrecognized currency code) — show the
       // original amount honestly labeled in its own currency rather than mislabeling it.
       return formatWithIntl(numericAmount, source);
     }
-    return formatWithIntl(converted, currency);
+    return formatWithIntl(converted, normalizeCurrencyCode(currency) || currency);
   };
 
   const loading = !countryResolved || !ratesAttempted;

@@ -61,7 +61,10 @@ const clearStoredAuth = () => {
   removeStoredValue(AUTH_STORAGE_KEYS.refreshToken);
 };
 
-const isAuthRequest = (url = '') => /\/auth\/(login|register|refresh|logout|forgot-password|resend-otp|verify-otp)/.test(url);
+// Only these exact endpoints are public authentication operations. A prefix match here would
+// also classify protected routes such as /auth/register/hotel-manager as public and strip the
+// administrator's bearer token from the request.
+const isAuthRequest = (url = '') => /^\/?auth\/(login|register|google|refresh|logout|forgot-password|resend-otp|verify-otp|reset-password)\/?(?:\?|$)/.test(url);
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -124,7 +127,9 @@ export const refreshAccessToken = () => {
       setStoredValue(AUTH_STORAGE_KEYS.token, nextAccessToken);
       setStoredValue(AUTH_STORAGE_KEYS.refreshToken, nextRefreshToken);
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('auth:token-refreshed'));
+        window.dispatchEvent(new CustomEvent('auth:token-refreshed', {
+          detail: { user: data?.user || data?.currentUser || null },
+        }));
       }
       return nextAccessToken;
     })
@@ -132,7 +137,7 @@ export const refreshAccessToken = () => {
       // Only a definitive rejection from the server kills the session. A network
       // blip or a 5xx must not sign the user out — they can retry.
       const status = error?.response?.status;
-      if (!status || (status >= 400 && status < 500)) {
+      if (status >= 400 && status < 500) {
         forceLogout();
       }
       throw error;
@@ -158,11 +163,9 @@ axiosInstance.interceptors.request.use(async (config) => {
   // Access token has lapsed but the refresh token is still good: trade it in
   // now rather than firing a request we already know will come back 401.
   if ((!token || isTokenExpired(token)) && getStoredValue(AUTH_STORAGE_KEYS.refreshToken)) {
-    try {
-      token = await refreshAccessToken();
-    } catch {
-      token = '';
-    }
+    // Let a refresh-network failure reject this request. Continuing without
+    // credentials would turn it into a misleading 401 and discard good state.
+    token = await refreshAccessToken();
   }
 
   if (token && !isTokenExpired(token)) {
@@ -186,13 +189,12 @@ axiosInstance.interceptors.response.use(
           contact_notification_failed: 'Your enquiry was received but we could not send a notification email to support.',
           booking_confirmation_email_failed: 'Booking confirmed but confirmation email could not be sent.',
           booking_cancellation_email_failed: 'Booking cancelled but cancellation email could not be sent.',
-          booking_cancellation_email_failed: 'Booking cancellation email could not be sent.',
           otp_email_failed: 'OTP email could not be sent. Please try resending.',
         };
         const message = map[emailFailure] || 'An important email could not be sent. Please check your inbox or try again later.';
         toast.error(message);
       }
-    } catch (e) {
+    } catch {
       // ignore toast errors
     }
     return response;

@@ -7,7 +7,7 @@ import PromotionFormModal from '../admin/PromotionFormModal';
 import { parseApiError } from '../../utils/parseApiError';
 
 const formatDiscount = (promo) =>
-  promo.discountType === 'PERCENTAGE' ? `${Number(promo.discountValue)}% off` : `${Number(promo.discountValue).toFixed(2)} off`;
+  promo.discountType === 'PERCENTAGE' ? `${Number(promo.discountValue)}% off` : `$${Number(promo.discountValue).toFixed(2)} USD off`;
 
 // Purpose: Hotel-scoped promotion management — create, edit, deactivate. Reused by both the
 // admin promotions screen (any hotel) and the manager promotions screen (own hotel only);
@@ -139,8 +139,8 @@ const PromotionManager = ({ hotelId }) => {
       ) : null}
 
       {confirmDeactivate ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/40 p-4 sm:p-6">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 sm:max-h-[calc(100dvh-3rem)] sm:p-6">
             <h3 className="text-lg font-semibold text-[#1A1A2E]">Deactivate this promotion?</h3>
             <p className="mt-2 text-sm text-[#6B7280]">
               <span className="font-mono font-semibold">{confirmDeactivate.code}</span> will stop working for new bookings.

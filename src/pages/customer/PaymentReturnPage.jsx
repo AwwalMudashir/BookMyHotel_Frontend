@@ -6,6 +6,7 @@ import PaymentSuccess from '../../components/payment/PaymentSuccess';
 import PaymentFailed from '../../components/payment/PaymentFailed';
 import paymentApi from '../../api/paymentApi';
 import bookingApi from '../../api/bookingApi';
+import { useAuth } from '../../hooks/useAuth';
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 25000;
@@ -18,6 +19,7 @@ const MAX_ATTEMPTS = Math.ceil(POLL_TIMEOUT_MS / POLL_INTERVAL_MS);
 const PaymentReturnPage = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const { reloadUser } = useAuth();
   const [phase, setPhase] = useState('polling'); // polling | succeeded | failed | timeout
   const [payment, setPayment] = useState(null);
   const [ecoPointsEarned, setEcoPointsEarned] = useState(0);
@@ -41,6 +43,11 @@ const PaymentReturnPage = () => {
           if (matched?.ecoPointsEarned > 0) setEcoPointsEarned(matched.ecoPointsEarned);
         } catch {
           // Non-critical — the callout simply won't show if this lookup fails.
+        }
+        try {
+          await reloadUser();
+        } catch {
+          // Payment succeeded; a temporary profile refresh failure is non-critical.
         }
         return;
       }

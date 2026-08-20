@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import adminApi from '../../api/adminApi';
 import authApi from '../../api/authApi';
+import hotelApi from '../../api/hotelApi';
 import toast from 'react-hot-toast';
 
 const Avatar = ({ firstName, lastName }) => {
@@ -39,9 +40,10 @@ const UserCard = ({ user, onDelete }) => (
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hotels, setHotels] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [payload, setPayload] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'ADMIN' });
+  const [payload, setPayload] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'ADMIN', hotelId: '' });
 
   const load = async () => {
     setLoading(true);
@@ -65,7 +67,12 @@ const AdminUsers = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    hotelApi.getAllHotels(0, 100)
+      .then((result) => setHotels(result.items || []))
+      .catch(() => setHotels([]));
+  }, []);
 
   const removeUser = async (id) => {
     if (!confirm('Remove this user?')) return;
@@ -81,6 +88,7 @@ const AdminUsers = () => {
     if (!payload.lastName.trim()) { toast.error('Last name required'); return false; }
     if (!payload.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) { toast.error('Valid email required'); return false; }
     if (!payload.password || payload.password.length < 6) { toast.error('Password must be at least 6 characters'); return false; }
+    if (payload.role === 'HOTEL_MANAGER' && !payload.hotelId) { toast.error('Select the hotel this manager will manage'); return false; }
     return true;
   };
 
@@ -94,7 +102,7 @@ const AdminUsers = () => {
         await authApi.registerHotelManager(payload);
       }
       toast.success('User created');
-      setPayload({ firstName: '', lastName: '', email: '', password: '', role: 'ADMIN' });
+      setPayload({ firstName: '', lastName: '', email: '', password: '', role: 'ADMIN', hotelId: '' });
       setShowCreate(false);
       load();
     } catch (e) {
@@ -168,9 +176,9 @@ const AdminUsers = () => {
 
         {/* Create user modal */}
         {showCreate && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 sm:p-6">
             <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]" onClick={() => setShowCreate(false)} />
-            <div className="relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+            <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.18)] sm:max-h-[calc(100dvh-3rem)]">
               <div className="bg-gradient-to-r from-[#EAF7F5] via-[#F5FBFA] to-white px-6 py-5 sm:px-7">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -205,11 +213,23 @@ const AdminUsers = () => {
 
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">Role</label>
-                  <select value={payload.role} onChange={(e) => setPayload({ ...payload, role: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E]/60 focus:bg-white focus:ring-4 focus:ring-[#0A7C6E]/10">
+                  <select value={payload.role} onChange={(e) => setPayload({ ...payload, role: e.target.value, hotelId: '' })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E]/60 focus:bg-white focus:ring-4 focus:ring-[#0A7C6E]/10">
                     <option value="ADMIN">Admin</option>
                     <option value="HOTEL_MANAGER">Hotel manager</option>
                   </select>
                 </div>
+
+                {payload.role === 'HOTEL_MANAGER' ? (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">Managed hotel</label>
+                    <select value={payload.hotelId} onChange={(e) => setPayload({ ...payload, hotelId: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E]/60 focus:bg-white focus:ring-4 focus:ring-[#0A7C6E]/10">
+                      <option value="">Select a hotel</option>
+                      {hotels.map((hotel) => (
+                        <option key={hotel.id} value={hotel.id}>{hotel.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
 
                 <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
                   <button onClick={() => setShowCreate(false)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Cancel</button>

@@ -13,6 +13,12 @@ const promotionApi = {
     return Array.isArray(res.data) ? res.data : [];
   },
 
+  // Global active promotions across hotels (frontend carousel uses this)
+  async getGlobalActivePromotions() {
+    const res = await axiosInstance.get('/promotions/active');
+    return Array.isArray(res.data) ? res.data : [];
+  },
+
   async createPromotion(payload) {
     const res = await axiosInstance.post('/promotions', payload);
     return res.data;

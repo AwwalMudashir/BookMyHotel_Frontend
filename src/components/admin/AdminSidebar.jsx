@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, LayoutDashboard, LogOut, MapPin, Tag, Users } from 'lucide-react';
+import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, LayoutDashboard, LogOut, MapPin, Tag, Users } from 'lucide-react';
 import authApi from '../../api/authApi';
 import { AUTH_STORAGE_KEYS } from '../../utils/constants';
 
@@ -123,6 +123,18 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
                     <Tag size={18} />
                   </span>
                   {!collapsed && 'Promotions'}
+                </>
+              )}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/admin/services" title={collapsed ? 'Services' : undefined} className={getNavLinkClassName}>
+              {({ isActive }) => (
+                <>
+                  <span className={getNavIconClassName(isActive)}>
+                    <ConciergeBell size={18} />
+                  </span>
+                  {!collapsed && 'Services'}
                 </>
               )}
             </NavLink>

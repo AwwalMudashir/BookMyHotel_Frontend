@@ -7,6 +7,7 @@ const tabs = [
   { to: '/admin/rooms', label: 'Rooms' },
   { to: '/admin/reservations', label: 'Reservations' },
   { to: '/admin/promotions', label: 'Promotions' },
+  { to: '/admin/services', label: 'Services' },
 ];
 
 // Purpose: Shared tab strip so the admin screens can actually navigate between each other —

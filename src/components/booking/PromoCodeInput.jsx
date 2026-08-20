@@ -16,7 +16,10 @@ const PromoCodeInput = ({ code, onCodeChange, onApply, onRemove, applying, resul
           </span>
           <div>
             <p className="text-sm font-semibold text-[#0A7C6E]">{result.promoCode} applied</p>
-            <p className="text-xs text-[#065E52]/80">-{format(result.discountAmount, currency)} off your room</p>
+            <p className="text-xs text-[#065E52]/80">
+              -{format(result.discountAmount, currency)} off your room
+              {result.discountType === 'FIXED_AMOUNT' && currency !== 'USD' ? ' · converted from USD' : ''}
+            </p>
           </div>
         </div>
         <button

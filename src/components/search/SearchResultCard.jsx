@@ -20,12 +20,15 @@ const SearchResultCard = ({ room, checkIn, checkOut }) => {
   // Do not use cloudinary public IDs (they live in images/publicIds).
   const roomLink = `/rooms/${room?.roomId ?? room?.id ?? room?.roomID}${checkIn && checkOut ? `?checkIn=${checkIn}&checkOut=${checkOut}` : ''}`;
 
+  // Prefer a backend-provided thumbnail (small payload) but fall back to images[0] when available
+  const thumb = room.thumbnail || (room.images && room.images.find(Boolean));
+
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[#E5E7EB] bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#0A7C6E]/30 hover:shadow-lg">
       <div className="relative h-48 shrink-0 overflow-hidden">
-        {room.images && room.images.length > 0 ? (
+        {thumb ? (
           <img
-            src={room.images[0]}
+            src={thumb}
             alt={room.roomType}
             className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />

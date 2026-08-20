@@ -55,9 +55,7 @@ const AuthModal = ({
   useEffect(() => {
     if (!isOpen || !successMessage) return;
 
-    if (mode === 'login') {
-      setFeedback({ type: 'success', message: successMessage });
-    }
+    setFeedback({ type: 'success', message: successMessage });
   }, [isOpen, mode, successMessage]);
 
   useEffect(() => {
@@ -219,6 +217,24 @@ const AuthModal = ({
     }
   };
 
+  // Allow pasting the full 6-digit OTP into any input. If the pasted text contains digits,
+  // distribute them across the input boxes starting from the target index.
+  const handleOtpPaste = (startIndex, event) => {
+    event.preventDefault();
+    const paste = (event.clipboardData || window.clipboardData).getData('text');
+    if (!paste) return;
+    const digits = paste.replace(/\D/g, '').slice(0, otpDigits.length - startIndex).split('');
+    if (digits.length === 0) return;
+    const nextDigits = [...otpDigits];
+    for (let i = 0; i < digits.length; i++) {
+      nextDigits[startIndex + i] = digits[i];
+    }
+    setOtpDigits(nextDigits);
+    // Focus the box after the last pasted digit (or the last box)
+    const focusIndex = Math.min(startIndex + digits.length, otpDigits.length - 1);
+    inputRefs.current[focusIndex]?.focus();
+  };
+
   const handleOtpKeyDown = (index, event) => {
     if (event.key === 'Backspace' && !otpDigits[index] && index > 0) {
       const nextDigits = [...otpDigits];
@@ -345,8 +361,8 @@ const AuthModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-3 py-4 backdrop-blur-sm sm:px-4 lg:px-6">
-      <div className="relative flex max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[24px] border border-slate-200/70 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.22)]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6">
+      <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-[24px] border border-slate-200/70 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.22)] sm:max-h-[calc(100dvh-3rem)]">
         <button
           type="button"
           onClick={onClose}
@@ -449,6 +465,7 @@ const AuthModal = ({
                       maxLength={1}
                       value={digit}
                       onChange={(event) => handleOtpDigitChange(index, event.target.value)}
+                      onPaste={(event) => handleOtpPaste(index, event)}
                       onKeyDown={(event) => handleOtpKeyDown(index, event)}
                       className="h-12 w-11 rounded-2xl border border-slate-200 bg-slate-50 text-center text-lg font-semibold text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20 sm:h-14 sm:w-12"
                     />

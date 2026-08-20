@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import authApi from '../api/authApi';
 import { refreshAccessToken } from '../api/axiosInstance';
 import { AUTH_STORAGE_KEYS } from '../utils/constants';
@@ -69,13 +69,15 @@ const isTokenExpired = (token) => {
 const normalizeUser = (source = {}, fallbackToken = '') => {
   const payload = fallbackToken ? decodeJwt(fallbackToken) : null;
   return {
-    id: source.userId || source.id || payload?.userId || payload?.sub || null,
-    email: source.email || payload?.email || '',
+    id: source.id ?? null,
+    userId: source.userId || source.user_id || payload?.userId || null,
+    email: source.email || payload?.email || payload?.sub || '',
     firstName: source.firstName || source.first_name || '',
     lastName: source.lastName || source.last_name || '',
     role: source.role || payload?.role || 'GUEST',
     managedHotel: source.managedHotel || null,
     ecoPoints: Number(source.ecoPoints ?? 0) || 0,
+    emailNotifications: source.emailNotifications ?? source.email_notifications ?? false,
   };
 };
 
@@ -88,7 +90,9 @@ const getInitialAuthState = () => {
       user: normalizeUser({}, storedToken),
       token: storedToken,
       refreshToken: storedRefreshToken,
-      isHydrated: true,
+      // JWT claims only contain email and role. Do not expose that partial
+      // identity as a hydrated session before /auth/me has completed.
+      isHydrated: false,
     };
   }
 
@@ -119,6 +123,16 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(initialAuthState.token);
   const [refreshToken, setRefreshToken] = useState(initialAuthState.refreshToken);
   const [isHydrated, setIsHydrated] = useState(initialAuthState.isHydrated);
+
+  const reloadUser = useCallback(async (fallbackToken = '') => {
+    const response = await authApi.getCurrentUser();
+    const activeToken = getStoredValue(AUTH_STORAGE_KEYS.token) || fallbackToken;
+    const normalized = normalizeUser(response, activeToken);
+    setUser(normalized);
+    setToken(activeToken);
+    setRefreshToken(getStoredValue(AUTH_STORAGE_KEYS.refreshToken));
+    return normalized;
+  }, []);
 
   const applySession = (sessionData = {}, fallbackToken = '', remember = true) => {
     const accessToken = sessionData?.token || sessionData?.accessToken || sessionData?.access_token || fallbackToken || '';
@@ -152,9 +166,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     // credentials may include `rememberMe` flag from the UI
     const remember = credentials?.rememberMe === false ? false : true;
-    const { rememberMe, ...payload } = credentials || {};
+    const payload = { email: credentials?.email, password: credentials?.password };
     const response = await authApi.login(payload);
     applySession(response, '', remember);
+    if (!response?.user && !response?.currentUser) {
+      await reloadUser(response?.token || response?.accessToken || '');
+    }
     return response;
   };
 
@@ -166,6 +183,9 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async (idToken) => {
     const response = await authApi.googleLogin(idToken);
     applySession(response, '', true);
+    if (!response?.user && !response?.currentUser) {
+      await reloadUser(response?.token || response?.accessToken || '');
+    }
     return response;
   };
 
@@ -184,7 +204,7 @@ export const AuthProvider = ({ children }) => {
     const nextAccessToken = await refreshAccessToken();
     setToken(nextAccessToken);
     setRefreshToken(getStoredValue(AUTH_STORAGE_KEYS.refreshToken));
-    setUser((currentUser) => currentUser || normalizeUser({}, nextAccessToken));
+    await reloadUser(nextAccessToken);
     return nextAccessToken;
   };
 
@@ -206,16 +226,36 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const handleLogout = () => logout();
-    const handleTokenRefresh = () => {
+    const handleLogout = () => {
+      clearStoredAuth();
+      setToken('');
+      setRefreshToken('');
+      setUser(null);
+      setIsHydrated(true);
+    };
+    const handleTokenRefresh = (event) => {
       const storedToken = getStoredValue(AUTH_STORAGE_KEYS.token);
       const storedRefreshToken = getStoredValue(AUTH_STORAGE_KEYS.refreshToken);
+      const refreshedUser = event?.detail?.user;
 
       if (storedToken && !isTokenExpired(storedToken)) {
         setToken(storedToken);
         setRefreshToken(storedRefreshToken);
-        setUser((currentUser) => currentUser || normalizeUser({}, storedToken));
-        setIsHydrated(true);
+        if (refreshedUser) {
+          setUser(normalizeUser(refreshedUser, storedToken));
+          setIsHydrated(true);
+        } else {
+          // Backward-compatible fallback for an older API response. A refreshed
+          // JWT is not a user profile, so fetch the authoritative database row.
+          authApi.getCurrentUser()
+            .then((response) => {
+              setUser(normalizeUser(response, storedToken));
+              setIsHydrated(true);
+            })
+            .catch(() => {
+              // Keep the previous complete identity during a transient failure.
+            });
+        }
       } else {
         clearStoredAuth();
         setToken('');
@@ -253,7 +293,7 @@ export const AuthProvider = ({ children }) => {
         setRefreshToken(getStoredValue(AUTH_STORAGE_KEYS.refreshToken));
       } catch (error) {
         console.error('[AuthContext] unable to hydrate session', error);
-        await logout();
+        handleLogout();
       } finally {
         setIsHydrated(true);
       }
@@ -266,7 +306,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const value = useMemo(() => ({
+  const value = {
     user,
     role: user?.role || 'GUEST',
     token,
@@ -277,12 +317,14 @@ export const AuthProvider = ({ children }) => {
     loginWithGoogle,
     register,
     refreshSession,
+    reloadUser,
     logout,
-  }), [user, token, refreshToken, isHydrated]);
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (!context) {

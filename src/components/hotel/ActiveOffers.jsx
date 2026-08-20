@@ -4,7 +4,7 @@ import { Tag } from 'lucide-react';
 import promotionApi from '../../api/promotionApi';
 
 const formatDiscount = (promo) =>
-  promo.discountType === 'PERCENTAGE' ? `${Number(promo.discountValue)}% off` : `${Number(promo.discountValue).toFixed(2)} off`;
+  promo.discountType === 'PERCENTAGE' ? `${Number(promo.discountValue)}% off` : `$${Number(promo.discountValue).toFixed(2)} USD off`;
 
 // Purpose: Public "active offers" strip for a hotel page — fed by the public
 // GET /promotions?hotelId= endpoint, no auth required. Renders nothing while loading,

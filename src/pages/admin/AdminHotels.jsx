@@ -13,7 +13,7 @@ const AdminHotels = () => {
 	const [hotels, setHotels] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
-	const [page, setPage] = useState(1);
+	const [page] = useState(1);
 	const [size] = useState(100);
 	const [showForm, setShowForm] = useState(false);
 	const [editingHotel, setEditingHotel] = useState(null);
@@ -38,9 +38,15 @@ const AdminHotels = () => {
 		loadHotels();
 	}, []);
 
-	const handleEdit = (hotel) => {
+	const handleEdit = async (hotel) => {
 		setEditingHotel(hotel);
 		setShowForm(true);
+		try {
+			const fullHotel = await hotelApi.getHotelById(hotel.id);
+			setEditingHotel(fullHotel);
+		} catch (err) {
+			console.error('Unable to load hotel details', err);
+		}
 	};
 
 	const handleDelete = async (id) => {
@@ -148,8 +154,8 @@ const AdminHotels = () => {
 			{showForm ? <HotelFormModal hotel={editingHotel} onClose={() => { setShowForm(false); loadHotels(); }} /> : null}
 
 			{confirmDelete ? (
-				<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40">
-					<div className="w-full max-w-md rounded-2xl bg-white p-6">
+				<div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/40 p-4 sm:p-6">
+						<div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 sm:max-h-[calc(100dvh-3rem)] sm:p-6">
 						<h3 className="text-lg font-semibold">Delete hotel</h3>
 						<p className="mt-2 text-sm text-[#6B7280]">Are you sure you want to delete <strong>{confirmDelete.name}</strong>? This will remove all branches and rooms.</p>
 						<div className="mt-4 flex justify-end gap-3">

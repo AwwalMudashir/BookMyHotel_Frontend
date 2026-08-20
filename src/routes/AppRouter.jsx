@@ -25,6 +25,7 @@ import AdminBranches from '../pages/admin/AdminBranches';
 import AdminRooms from '../pages/admin/AdminRooms';
 import AdminReservations from '../pages/admin/AdminReservations';
 import AdminPromotions from '../pages/admin/AdminPromotions';
+import AdminServices from '../pages/admin/AdminServices';
 import AdminHotelReport from '../pages/admin/AdminHotelReport';
 import AdminUsers from '../pages/admin/AdminUsers';
 import ProtectedRoute from './ProtectedRoute';
@@ -71,6 +72,7 @@ const AppRouter = () => (
           <Route path="/admin/rooms" element={<AdminRooms />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
+          <Route path="/admin/services" element={<AdminServices />} />
           <Route path="/admin/reports/:hotelId" element={<AdminHotelReport />} />
           <Route path="/admin/users" element={<AdminUsers />} />
         </Route>

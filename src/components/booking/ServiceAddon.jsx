@@ -3,7 +3,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { serviceTypeIcons } from '../../utils/serviceTypes';
 
 // Purpose: Add-on service card for booking extras. quantity === 0 means unselected.
-const ServiceAddon = ({ service, nativeCurrency, quantity = 0, onChange }) => {
+const ServiceAddon = ({ service, quantity = 0, onChange }) => {
   const { format } = useCurrency();
   const Icon = serviceTypeIcons[service.serviceType] || Sparkles;
   const selected = quantity > 0;
@@ -36,7 +36,7 @@ const ServiceAddon = ({ service, nativeCurrency, quantity = 0, onChange }) => {
         <div>
           <p className="text-sm font-semibold text-[#1A1A2E]">{service.name}</p>
           {service.description ? <p className="mt-0.5 text-xs text-[#6B7280]">{service.description}</p> : null}
-          <p className="mt-1 text-xs font-semibold text-[#0A7C6E]">{format(service.price, nativeCurrency)} / each</p>
+          <p className="mt-1 text-xs font-semibold text-[#0A7C6E]">{format(service.price, 'USD')} / each</p>
         </div>
       </div>
 

@@ -77,7 +77,7 @@ const HotelCard = ({ hotel }) => {
     >
       <div className="relative h-40 overflow-hidden bg-[#E6F5F3]">
         {imageUrl ? (
-          <img src={imageUrl} alt={hotel?.name || 'Hotel'} className="h-full w-full object-cover" />
+          <img src={imageUrl} alt={hotel?.name || 'Hotel'} className="h-full w-full object-contain" />
         ) : (
           <div className="flex h-full items-center justify-center">
             <Building2 size={36} className="text-[#0A7C6E]" />

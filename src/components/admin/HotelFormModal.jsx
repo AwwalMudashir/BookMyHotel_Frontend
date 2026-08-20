@@ -11,6 +11,7 @@ const HotelFormModal = ({ hotel = null, onClose = () => {} }) => {
   const [description, setDescription] = useState(hotel?.description || '');
   const [starRating, setStarRating] = useState(Number(hotel?.starRating ?? 0));
   const [logoUrl, setLogoUrl] = useState(hotel?.logoUrl || '');
+  const [longImage, setLongImage] = useState(hotel?.longImage || '');
   const [hoverRating, setHoverRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -60,6 +61,7 @@ const HotelFormModal = ({ hotel = null, onClose = () => {} }) => {
         description: description.trim(),
         starRating,
         logoUrl: logoUrl.trim() || undefined,
+        longImage: longImage.trim() || undefined,
       };
 
       if (isEdit) {
@@ -80,8 +82,8 @@ const HotelFormModal = ({ hotel = null, onClose = () => {} }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm" onClick={handleBackdropClick}>
-      <div className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition duration-300 ease-out motion-safe:animate-fadeIn" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm sm:p-6" onClick={handleBackdropClick}>
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg transform overflow-y-auto overscroll-contain rounded-2xl bg-white p-5 shadow-2xl transition duration-300 ease-out motion-safe:animate-fadeIn sm:max-h-[calc(100dvh-3rem)] sm:p-6" onClick={(event) => event.stopPropagation()}>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="font-[Playfair_Display] text-2xl font-semibold text-slate-900">
@@ -154,6 +156,26 @@ const HotelFormModal = ({ hotel = null, onClose = () => {} }) => {
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
             />
           </div>
+
+          <div>
+            <label htmlFor="hotelLongImage" className="mb-2 block text-sm font-medium text-slate-700">Long image URL</label>
+            <input
+              id="hotelLongImage"
+              type="url"
+              value={longImage}
+              onChange={(event) => setLongImage(event.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
+            />
+            <p className="mt-2 text-sm text-slate-500">This wide image is used for hotel promos and landing displays.</p>
+          </div>
+
+          {longImage ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-sm font-medium text-slate-700">Preview</p>
+              <img src={longImage} alt="Hotel long banner" className="h-40 w-full rounded-2xl object-cover" />
+            </div>
+          ) : null}
 
           <p className="text-sm text-slate-500">
             Branches and rooms are added separately after creating the hotel.

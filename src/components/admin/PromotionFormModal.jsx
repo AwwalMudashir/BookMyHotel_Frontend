@@ -35,6 +35,7 @@ const PromotionFormModal = ({ hotelId, promotion = null, onClose = () => {} }) =
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const isFixedAmount = form.discountType === 'FIXED_AMOUNT';
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -113,11 +114,17 @@ const PromotionFormModal = ({ hotelId, promotion = null, onClose = () => {} }) =
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm" onClick={handleBackdropClick}>
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm sm:p-6" onClick={handleBackdropClick}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="promotion-form-title"
+        className="flex h-[calc(100dvh-2rem)] max-h-[46rem] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-[calc(100dvh-3rem)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6 sm:py-5">
           <div>
-            <h2 className="font-[Playfair_Display] text-2xl font-semibold text-slate-900">
+            <h2 id="promotion-form-title" className="font-[Playfair_Display] text-2xl font-semibold text-slate-900">
               {isEdit ? 'Edit promotion' : 'New promotion'}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
@@ -129,7 +136,8 @@ const PromotionFormModal = ({ hotelId, promotion = null, onClose = () => {} }) =
           </button>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit} noValidate>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-scroll overscroll-contain px-5 py-5 [scrollbar-gutter:stable] sm:px-6">
           <div>
             <label htmlFor="promoCode" className="mb-2 block text-sm font-medium text-slate-700">Promo code</label>
             <input
@@ -161,16 +169,29 @@ const PromotionFormModal = ({ hotelId, promotion = null, onClose = () => {} }) =
               <label htmlFor="discountValue" className="mb-2 block text-sm font-medium text-slate-700">
                 {form.discountType === 'PERCENTAGE' ? 'Discount (%)' : 'Discount amount'}
               </label>
-              <input
-                id="discountValue"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.discountValue}
-                onChange={updateField('discountValue')}
-                placeholder="0.00"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
-              />
+              <div className="relative">
+                {isFixedAmount ? (
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center rounded-l-2xl border-r border-slate-200 bg-slate-100 px-3 text-xs font-bold text-slate-600" aria-hidden="true">
+                    USD
+                  </span>
+                ) : null}
+                <input
+                  id="discountValue"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.discountValue}
+                  onChange={updateField('discountValue')}
+                  placeholder="0.00"
+                  aria-describedby={isFixedAmount ? 'fixed-discount-currency-help' : undefined}
+                  className={`w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20 ${isFixedAmount ? 'pl-17' : 'pl-4'}`}
+                />
+              </div>
+              {isFixedAmount ? (
+                <p id="fixed-discount-currency-help" className="mt-1.5 text-xs leading-5 text-slate-500">
+                  Fixed discounts are stored in USD and converted automatically when guests apply them.
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -239,15 +260,18 @@ const PromotionFormModal = ({ hotelId, promotion = null, onClose = () => {} }) =
             </div>
           </div>
 
-          {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+            {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+          </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex w-full items-center justify-center rounded-2xl bg-[#0A7C6E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#065E52] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {submitting ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save changes' : 'Create promotion')}
-          </button>
+          <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-6">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex w-full items-center justify-center rounded-2xl bg-[#0A7C6E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#065E52] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {submitting ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save changes' : 'Create promotion')}
+            </button>
+          </div>
         </form>
       </div>
     </div>
