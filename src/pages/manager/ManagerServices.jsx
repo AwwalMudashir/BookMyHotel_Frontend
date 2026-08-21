@@ -1,6 +1,6 @@
 import ServiceManager from '../../components/manager/ServiceManager';
 import { useAuth } from '../../hooks/useAuth';
-import AdminLayout from '../../components/admin/AdminLayout';
+import ManagerLayout from '../../components/manager/ManagerLayout';
 
 // Purpose: Manager ancillary service management page. Only ever renders the create-service
 // tool for a HOTEL_MANAGER whose account has a managedHotel assigned — anyone else (including
@@ -11,7 +11,7 @@ const ManagerServices = () => {
   const managedHotelId = user?.managedHotel?.id;
 
   return (
-    <AdminLayout>
+    <ManagerLayout>
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-6">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Property services</p>
@@ -31,7 +31,7 @@ const ManagerServices = () => {
           <ServiceManager hotelId={managedHotelId} />
         )}
       </div>
-    </AdminLayout>
+    </ManagerLayout>
   );
 };
 

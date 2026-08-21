@@ -7,6 +7,7 @@ import hotelApi from '../../api/hotelApi';
 import RoomCard from '../../components/hotel/RoomCard';
 import ReviewList from '../../components/hotel/ReviewList';
 import ActiveOffers from '../../components/hotel/ActiveOffers';
+import sustainabilityTagApi from '../../api/sustainabilityTagApi';
 
 const HotelDetailPage = () => {
   const { id } = useParams();
@@ -15,6 +16,7 @@ const HotelDetailPage = () => {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [sustainabilityTags, setSustainabilityTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [branchLoading, setBranchLoading] = useState(false);
   const [error, setError] = useState('');
@@ -82,19 +84,22 @@ const HotelDetailPage = () => {
 
       setBranchLoading(true);
       try {
-        const [roomData, fullBranch] = await Promise.all([
+        const [roomData, fullBranch, scopedTags] = await Promise.all([
           hotelApi.getBranchRooms(selectedBranch.id),
           // The branches-list endpoint may be a lighter DTO — fetch full detail to guarantee
           // ecoCertified/ecoTags/ecoScore are present rather than assuming the list has them.
           hotelApi.getBranchById(selectedBranch.id).catch(() => null),
+          sustainabilityTagApi.getForBranch(selectedBranch.id).catch(() => []),
         ]);
         setRooms(roomData);
+        setSustainabilityTags(scopedTags);
         if (fullBranch) {
           setBranches((current) => current.map((branch) => (branch.id === fullBranch.id ? fullBranch : branch)));
           setSelectedBranch(fullBranch);
         }
       } catch {
         setRooms([]);
+        setSustainabilityTags([]);
       } finally {
         setBranchLoading(false);
       }
@@ -102,6 +107,14 @@ const HotelDetailPage = () => {
 
     loadBranchDetails();
   }, [selectedBranch?.id]);
+
+  const legacyTagNames = selectedBranch?.ecoTags || [];
+  const visibleSustainabilityTags = [
+    ...legacyTagNames.map((name) => ({ id: `legacy-${name}`, name })),
+    ...sustainabilityTags.filter((tag) => !legacyTagNames.some(
+      (name) => name.toLowerCase() === tag.name.toLowerCase(),
+    )),
+  ];
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A2E]">
@@ -211,7 +224,7 @@ const HotelDetailPage = () => {
                     </div>
                   </div>
 
-                  {(selectedBranch.ecoTags?.length > 0 || selectedBranch.ecoScore != null) ? (
+                  {(visibleSustainabilityTags.length > 0 || selectedBranch.ecoScore != null) ? (
                     <div className="mt-4 rounded-2xl border border-[#DCEFEA] bg-[#F7FCF8] p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#1D6A2D]">
@@ -224,11 +237,11 @@ const HotelDetailPage = () => {
                           </span>
                         ) : null}
                       </div>
-                      {selectedBranch.ecoTags?.length > 0 ? (
+                      {visibleSustainabilityTags.length > 0 ? (
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {selectedBranch.ecoTags.map((tag) => (
-                            <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#1D6A2D]">
-                              {tag.replace(/_/g, ' ')}
+                          {visibleSustainabilityTags.map((tag) => (
+                            <span key={tag.id} title={tag.description || undefined} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#1D6A2D]">
+                              {tag.name.replace(/_/g, ' ')}
                             </span>
                           ))}
                         </div>

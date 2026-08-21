@@ -1,3 +1,19 @@
-// Purpose: Manager reservation list and filter page.
-const ManagerReservations = () => <div className="p-6">Manager reservations</div>;
+import { useCallback, useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import ManagerLayout from '../../components/manager/ManagerLayout';
+import ReservationTable from '../../components/admin/ReservationTable';
+import Pagination from '../../components/core/Pagination';
+import Spinner from '../../components/core/Spinner';
+import managerReservationApi from '../../api/managerReservationApi';
+import roomApi from '../../api/roomApi';
+import { parseApiError } from '../../utils/parseApiError';
+
+const ManagerReservations = () => {
+  const [date, setDate] = useState(''); const [status, setStatus] = useState(''); const [page, setPage] = useState(0); const [bookings, setBookings] = useState([]); const [totalPages, setTotalPages] = useState(0); const [roomsById, setRoomsById] = useState({}); const [loading, setLoading] = useState(true); const [actingId, setActingId] = useState(null); const inFlight = useRef(new Set());
+  const load = useCallback(async () => { setLoading(true); try { const data = await managerReservationApi.getReservations({ date, status, page }); setBookings(data.content || []); setTotalPages(data.totalPages || 0); } catch (err) { toast.error(parseApiError(err, 'Unable to load reservations.')); } finally { setLoading(false); } }, [date, status, page]);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
+  useEffect(() => { [...new Set(bookings.map((item) => item.roomId))].filter((id) => id && !roomsById[id] && !inFlight.current.has(id)).forEach((id) => { inFlight.current.add(id); roomApi.getRoomById(id).then((room) => setRoomsById((current) => ({ ...current, [id]: room }))).finally(() => inFlight.current.delete(id)); }); }, [bookings, roomsById]);
+  const update = async (booking, nextStatus) => { if (!window.confirm(`${nextStatus === 'CONFIRMED' ? 'Confirm' : 'Cancel'} reservation ${booking.reference || booking.id}?`)) return; setActingId(booking.id); try { await managerReservationApi.updateStatus(booking.id, nextStatus); toast.success(`Reservation ${nextStatus.toLowerCase()}.`); await load(); } catch (err) { toast.error(parseApiError(err, 'Unable to update this reservation.')); } finally { setActingId(null); } };
+  return <ManagerLayout><div className="mx-auto max-w-6xl"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0A7C6E]">Operations</p><h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold">Reservations</h1><p className="mt-1 text-sm text-slate-500">Bookings for your assigned hotel only.</p><div className="my-6 flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4"><label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Stay date<input type="date" value={date} onChange={(event) => { setDate(event.target.value); setPage(0); }} className="mt-1 block rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal" /></label><label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Status<select value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }} className="mt-1 block rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"><option value="">All statuses</option><option value="PENDING">Pending</option><option value="CONFIRMED">Confirmed</option><option value="CANCELLED">Cancelled</option></select></label></div><div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">{loading ? <div className="flex justify-center py-12"><Spinner /></div> : <ReservationTable bookings={bookings} roomsById={roomsById} actingId={actingId} onConfirm={(booking) => update(booking, 'CONFIRMED')} onCancel={(booking) => update(booking, 'CANCELLED')} />}</div>{totalPages > 1 ? <div className="mt-6"><Pagination page={page} totalPages={totalPages} onPageChange={setPage} /></div> : null}</div></ManagerLayout>;
+};
 export default ManagerReservations;

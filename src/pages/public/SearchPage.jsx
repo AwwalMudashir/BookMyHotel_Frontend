@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Search, SlidersHorizontal, ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import Navbar from '../../components/core/Navbar';
 import FilterPanel from '../../components/search/FilterPanel';
 import SearchResultCard from '../../components/search/SearchResultCard';
@@ -25,7 +24,6 @@ const DEFAULT_FILTERS = {
 };
 const DEFAULT_SORT = 'price_asc';
 const DEFAULT_PAGE = 0;
-const EXCHANGE_RATE_ERROR = /exchange rate not available for currency:\s*([a-z]{3})/i;
 const normalizeHotelIds = (values = []) => [...new Set(
   values.map((value) => String(value).trim()).filter((value) => /^\d+$/.test(value) && Number(value) > 0),
 )];
@@ -55,7 +53,7 @@ const readInitialSearchState = (searchParams) => {
 };
 
 const SearchPage = () => {
-  const { currency, setCountry } = useCurrency();
+  const { currency } = useCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
   const [initialSearch] = useState(() => readInitialSearchState(searchParams));
   const [filters, setFilters] = useState(initialSearch.filters);
@@ -127,31 +125,9 @@ const SearchPage = () => {
       syncUrl(activeFilters, activeSort, response.number ?? activePage);
     } catch (err) {
       const message = parseApiError(err, 'Unable to load rooms.');
-      const unavailableCurrency = message.match(EXCHANGE_RATE_ERROR)?.[1]?.toUpperCase();
-      const hasPriceFilter = activeFilters.minPrice !== '' || activeFilters.maxPrice !== '';
-      const shouldClearPriceFilter = Boolean(
-        unavailableCurrency
-        && hasPriceFilter
-        && unavailableCurrency !== currency,
-      );
-      const shouldSwitchToUsd = Boolean(unavailableCurrency && currency !== 'USD');
-
-      if (shouldSwitchToUsd || shouldClearPriceFilter) {
-        if (shouldSwitchToUsd) setCountry('US');
-        if (shouldClearPriceFilter) {
-          setFilters((current) => ({ ...current, minPrice: '', maxPrice: '' }));
-        }
-
-        setError(null);
-        toast.error(
-          shouldClearPriceFilter
-            ? `${unavailableCurrency} exchange rates are unavailable. Switched to USD and cleared the price range so results can still load accurately.`
-            : `${unavailableCurrency} exchange rates are unavailable. Prices and price filters have been switched to USD.`,
-          { id: 'search-currency-fallback', duration: 7000 },
-        );
-      } else {
-        setError(message);
-      }
+      // Never mutate the user's filters in response to a server error. Unsupported legacy
+      // room currencies are excluded by the API while a price filter is active.
+      setError(message);
       setHasSearched(true);
     } finally {
       setIsLoading(false);

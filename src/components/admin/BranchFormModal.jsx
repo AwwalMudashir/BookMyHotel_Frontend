@@ -3,6 +3,7 @@ import { Leaf, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import adminApi from '../../api/adminApi';
 import { parseApiError } from '../../utils/parseApiError';
+import { useCurrency } from '../../hooks/useCurrency';
 
 // Purpose: Create/edit modal for a hotel's branches, including the admin-set sustainability
 // fields (ecoCertified, ecoTags, ecoScore) — plain entered values, nothing derived/computed.
@@ -24,6 +25,8 @@ const BranchFormModal = ({ hotelId, branch = null, onClose = () => {} }) => {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { supportedCurrencies } = useCurrency();
+  const unsupportedCurrentCurrency = Boolean(currency && supportedCurrencies.length > 0 && !supportedCurrencies.includes(currency.toUpperCase()));
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -65,6 +68,7 @@ const BranchFormModal = ({ hotelId, branch = null, onClose = () => {} }) => {
     if (!city.trim()) return 'City is required.';
     if (!country.trim()) return 'Country is required.';
     if (!currency.trim()) return 'Currency is required.';
+    if (!supportedCurrencies.includes(currency.trim().toUpperCase())) return 'Choose a currency supported by the live exchange-rate provider.';
     if (ecoScore !== '' && (Number.isNaN(Number(ecoScore)) || Number(ecoScore) < 0 || Number(ecoScore) > 100)) {
       return 'Sustainability score must be between 0 and 100.';
     }
@@ -179,15 +183,16 @@ const BranchFormModal = ({ hotelId, branch = null, onClose = () => {} }) => {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label htmlFor="branchCurrency" className="mb-2 block text-sm font-medium text-slate-700">Currency</label>
-              <input
+              <select
                 id="branchCurrency"
-                type="text"
                 value={currency}
                 onChange={(event) => setCurrency(event.target.value)}
-                placeholder="AED"
-                maxLength={3}
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm uppercase text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
-              />
+              >
+                <option value="" disabled>Select</option>
+                {unsupportedCurrentCurrency ? <option value={currency} disabled>{currency} (unsupported)</option> : null}
+                {supportedCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}
+              </select>
             </div>
             <div>
               <label htmlFor="branchCheckIn" className="mb-2 block text-sm font-medium text-slate-700">Check-in</label>

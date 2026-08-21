@@ -1,3 +1,21 @@
-// Purpose: Manager rate calendar page.
-const ManagerRates = () => <div className="p-6">Manager rates</div>;
+import { useCallback, useEffect, useState } from 'react';
+import { Edit2, Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import ManagerLayout from '../../components/manager/ManagerLayout';
+import RoomFormModal from '../../components/admin/RoomFormModal';
+import hotelApi from '../../api/hotelApi';
+import roomApi from '../../api/roomApi';
+import { useAuth } from '../../hooks/useAuth';
+import Spinner from '../../components/core/Spinner';
+import { parseApiError } from '../../utils/parseApiError';
+
+const ManagerRates = () => {
+  const { user } = useAuth(); const hotelId = user?.managedHotel?.id;
+  const [branches, setBranches] = useState([]); const [branchId, setBranchId] = useState(''); const [rooms, setRooms] = useState([]); const [loading, setLoading] = useState(true); const [editing, setEditing] = useState(undefined);
+  useEffect(() => { if (!hotelId) return; hotelApi.getHotelBranches(hotelId).then((items) => { setBranches(items); if (items[0]) setBranchId(String(items[0].id)); }); }, [hotelId]);
+  const loadRooms = useCallback(async () => { if (!branchId) { setLoading(false); return; } setLoading(true); try { setRooms(await hotelApi.getBranchRooms(branchId)); } catch (err) { toast.error(parseApiError(err, 'Unable to load rooms.')); } finally { setLoading(false); } }, [branchId]);
+  useEffect(() => { const timer = window.setTimeout(() => { void loadRooms(); }, 0); return () => window.clearTimeout(timer); }, [loadRooms]);
+  const remove = async (room) => { if (!window.confirm('Remove this room from public listings?')) return; try { await roomApi.deleteRoom(branchId, room.roomId || room.id); toast.success('Room removed from listings.'); loadRooms(); } catch (err) { toast.error(parseApiError(err, 'Unable to remove this room.')); } };
+  return <ManagerLayout><div className="mx-auto max-w-6xl"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0A7C6E]">Inventory</p><h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold">Rooms & rates</h1><p className="mt-1 text-sm text-slate-500">Manage room details and base prices for your hotel.</p></div><div className="flex flex-wrap items-end gap-3"><label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Branch<select value={branchId} onChange={(event) => setBranchId(event.target.value)} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal text-slate-900">{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name || branch.city}</option>)}</select></label><button type="button" disabled={!branchId} onClick={() => setEditing(null)} className="inline-flex items-center gap-2 rounded-full bg-[#0A7C6E] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Plus size={16} />Add room</button></div></div>{loading ? <div className="flex justify-center py-16"><Spinner /></div> : rooms.length === 0 ? <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No active rooms in this branch.</div> : <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">{rooms.map((room) => <div key={room.id} className="flex flex-wrap items-center gap-4 border-b border-slate-100 p-4 last:border-0"><div className="min-w-48 flex-1"><p className="font-semibold">{room.roomTypeName || room.roomType}</p><p className="mt-1 truncate text-xs text-slate-500">{room.description || `Room ${room.roomId || room.id}`}</p></div><p className="text-sm font-semibold">{room.currency} {Number(room.pricePerNight || 0).toFixed(2)}</p><button type="button" onClick={() => setEditing(room)} className="rounded-full p-2 text-slate-500 hover:bg-slate-100"><Edit2 size={16} /></button><button type="button" onClick={() => remove(room)} className="rounded-full p-2 text-rose-600 hover:bg-rose-50"><Trash2 size={16} /></button></div>)}</div>}{editing !== undefined ? <RoomFormModal branchId={Number(branchId)} room={editing} onClose={(saved) => { setEditing(undefined); if (saved) loadRooms(); }} /> : null}</div></ManagerLayout>;
+};
 export default ManagerRates;

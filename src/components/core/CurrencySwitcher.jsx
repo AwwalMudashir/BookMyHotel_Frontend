@@ -5,7 +5,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 
 // Purpose: Navbar globe button + dropdown for switching the display country/currency.
 const CurrencySwitcher = ({ buttonClassName = '' }) => {
-  const { country, setCountry } = useCurrency();
+  const { country, setCountry, supportedCurrencies } = useCurrency();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -40,7 +40,7 @@ const CurrencySwitcher = ({ buttonClassName = '' }) => {
           role="listbox"
           className="fixed left-1/2 top-[4.5rem] z-[9999] mx-auto mt-0 max-h-80 w-[min(90vw,16rem)] -translate-x-1/2 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 text-slate-900 shadow-xl md:absolute md:left-auto md:right-0 md:top-full md:translate-x-0 md:mt-2 md:w-64"
         >
-          {countryCurrencyConfig.map((entry) => {
+          {countryCurrencyConfig.filter((entry) => supportedCurrencies.length === 0 || supportedCurrencies.includes(entry.currency)).map((entry) => {
             const isActive = entry.code === country;
             return (
               <button

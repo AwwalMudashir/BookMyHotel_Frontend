@@ -21,6 +21,7 @@ const normalizeRoomDetail = (payload) => ({
   roomTypeName: payload?.roomTypeName || 'Room',
   hotelId: payload?.hotelId ?? payload?.hotelID ?? payload?.hotel_id ?? null,
   description: payload?.description || payload?.roomDescription || '',
+  maxOccupancy: payload?.maxOccupancy ?? payload?.occupancy ?? 1,
   amenities: payload?.amenities && typeof payload.amenities === 'object' ? payload.amenities : {},
   images: Array.isArray(payload?.images) ? payload.images : [],
   publicIds: Array.isArray(payload?.publicIds) ? payload.publicIds : [],

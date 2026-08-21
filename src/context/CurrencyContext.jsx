@@ -239,7 +239,17 @@ export const CurrencyProvider = ({ children }) => {
   const loading = !countryResolved || !ratesAttempted;
 
   const value = useMemo(
-    () => ({ country, currency, symbol, setCountry, rates, convert, format, loading }),
+    () => ({
+      country,
+      currency,
+      symbol,
+      setCountry,
+      rates,
+      supportedCurrencies: rates ? Object.keys(rates).sort() : [],
+      convert,
+      format,
+      loading,
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [country, currency, symbol, rates, loading],
   );

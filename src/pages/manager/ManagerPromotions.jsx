@@ -1,6 +1,6 @@
 import PromotionManager from '../../components/promotion/PromotionManager';
 import { useAuth } from '../../hooks/useAuth';
-import AdminLayout from '../../components/admin/AdminLayout';
+import ManagerLayout from '../../components/manager/ManagerLayout';
 
 // Purpose: Hotel-manager promotion management for their own hotel only. Mirrors
 // ManagerServices — an ADMIN reaching this route (ManagerRoute allows both roles) is pointed
@@ -10,7 +10,7 @@ const ManagerPromotions = () => {
   const managedHotelId = user?.managedHotel?.id;
 
   return (
-    <AdminLayout>
+    <ManagerLayout>
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-6">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Property promotions</p>
@@ -32,7 +32,7 @@ const ManagerPromotions = () => {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </ManagerLayout>
   );
 };
 

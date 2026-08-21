@@ -19,6 +19,7 @@ import ManagerServices from '../pages/manager/ManagerServices';
 import ManagerOpportunities from '../pages/manager/ManagerOpportunities';
 import ManagerReservations from '../pages/manager/ManagerReservations';
 import ManagerPromotions from '../pages/manager/ManagerPromotions';
+import ManagerSustainabilityTags from '../pages/manager/ManagerSustainabilityTags';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminHotels from '../pages/admin/AdminHotels';
 import AdminBranches from '../pages/admin/AdminBranches';
@@ -28,8 +29,8 @@ import AdminPromotions from '../pages/admin/AdminPromotions';
 import AdminServices from '../pages/admin/AdminServices';
 import AdminHotelReport from '../pages/admin/AdminHotelReport';
 import AdminUsers from '../pages/admin/AdminUsers';
+import AdminSustainabilityTags from '../pages/admin/AdminSustainabilityTags';
 import ProtectedRoute from './ProtectedRoute';
-import CustomerRoute from './CustomerRoute';
 import ManagerRoute from './ManagerRoute';
 import AdminRoute from './AdminRoute';
 
@@ -63,6 +64,7 @@ const AppRouter = () => (
           <Route path="/manager/opportunities" element={<ManagerOpportunities />} />
           <Route path="/manager/reservations" element={<ManagerReservations />} />
           <Route path="/manager/promotions" element={<ManagerPromotions />} />
+          <Route path="/manager/sustainability-tags" element={<ManagerSustainabilityTags />} />
         </Route>
 
         <Route element={<AdminRoute />}>
@@ -73,6 +75,7 @@ const AppRouter = () => (
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
           <Route path="/admin/services" element={<AdminServices />} />
+          <Route path="/admin/sustainability-tags" element={<AdminSustainabilityTags />} />
           <Route path="/admin/reports/:hotelId" element={<AdminHotelReport />} />
           <Route path="/admin/users" element={<AdminUsers />} />
         </Route>

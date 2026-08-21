@@ -28,6 +28,18 @@ const availabilityApi = {
       isAvailable: res.data?.isAvailable ?? res.data?.available ?? true,
     };
   },
+
+  async setAvailability(roomId, payload) {
+    const response = await axiosInstance.put(`/availability/${roomId}/availability`, payload);
+    return response.data;
+  },
+
+  async updateDailyRate(roomId, date, newRate, reason) {
+    const response = await axiosInstance.put(`/availability/${roomId}/update-rate`, null, {
+      params: { date, newRate, reason },
+    });
+    return response.data;
+  },
 };
 
 export default availabilityApi;

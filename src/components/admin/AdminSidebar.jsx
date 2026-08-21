@@ -1,9 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, LayoutDashboard, LogOut, MapPin, Tag, Users } from 'lucide-react';
+import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, Leaf, LayoutDashboard, LogOut, MapPin, Tag, Users, X } from 'lucide-react';
 import authApi from '../../api/authApi';
 import { AUTH_STORAGE_KEYS } from '../../utils/constants';
 
-const AdminSidebar = ({ collapsed, onToggle }) => {
+const AdminSidebar = ({ collapsed, mobileOpen = false, onCloseMobile = () => {}, onToggle }) => {
   const navigate = useNavigate();
 
   const logout = async () => {
@@ -12,7 +12,7 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
       if (refreshToken) {
         await authApi.logout(refreshToken);
       }
-    } catch (e) {
+    } catch {
       // ignore logout API errors
     }
     // clear local storage/session and dispatch global logout event
@@ -21,7 +21,9 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
       window.localStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
       window.sessionStorage.removeItem(AUTH_STORAGE_KEYS.token);
       window.sessionStorage.removeItem(AUTH_STORAGE_KEYS.refreshToken);
-    } catch (e) {}
+    } catch {
+      // Storage may be unavailable in privacy-restricted browsers.
+    }
     window.dispatchEvent(new Event('auth:logout'));
     navigate('/');
   };
@@ -30,7 +32,9 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
   const getNavIconClassName = (isActive) => `flex h-9 w-9 items-center justify-center rounded-lg ${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'}`;
 
   return (
-    <aside className={`fixed top-0 left-0 z-40 bottom-0 flex h-screen flex-col bg-white border-r border-slate-200 transition-all duration-300 ${collapsed ? 'w-28 px-3' : 'w-72 px-5'}`} aria-hidden={false}>
+    <>
+    {mobileOpen ? <button type="button" onClick={onCloseMobile} aria-label="Close admin navigation" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" /> : null}
+    <aside className={`fixed top-0 left-0 z-50 bottom-0 flex h-screen w-72 flex-col bg-white border-r border-slate-200 px-5 transition-all duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${collapsed ? 'lg:w-28 lg:px-3' : 'lg:w-72 lg:px-5'}`} aria-hidden={false}>
       <div className="flex items-center justify-between gap-2 py-3">
         <div className={`flex items-center gap-2 ${collapsed ? 'justify-center w-full' : ''}`}>
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A7C6E] text-white shadow-sm">
@@ -47,13 +51,14 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
           type="button"
           onClick={onToggle}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
+          className="hidden h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 lg:inline-flex"
         >
           <ChevronLeft size={16} className={`${collapsed ? 'rotate-180' : ''} transition-transform`} />
         </button>
+        <button type="button" onClick={onCloseMobile} className="rounded-lg p-2 text-slate-500 lg:hidden" aria-label="Close admin navigation"><X size={18} /></button>
       </div>
 
-      <nav className="flex-1 overflow-hidden py-3">
+      <nav onClick={onCloseMobile} className="flex-1 overflow-y-auto py-3">
         <ul className="space-y-0.5">
           <li>
             <NavLink to="/admin/dashboard" title={collapsed ? 'Dashboard' : undefined} className={getNavLinkClassName}>
@@ -151,6 +156,16 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
               )}
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/admin/sustainability-tags" title={collapsed ? 'Sustainability tags' : undefined} className={getNavLinkClassName}>
+              {({ isActive }) => (
+                <>
+                  <span className={getNavIconClassName(isActive)}><Leaf size={18} /></span>
+                  {!collapsed && 'Sustainability tags'}
+                </>
+              )}
+            </NavLink>
+          </li>
         </ul>
       </nav>
 
@@ -179,6 +194,7 @@ const AdminSidebar = ({ collapsed, onToggle }) => {
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

@@ -6,7 +6,6 @@ import { ROOM_TAG_OPTIONS } from '../../utils/roomTags';
 import { useCurrency } from '../../hooks/useCurrency';
 
 const roomTypes = ['Standard', 'Deluxe', 'Suite', 'Presidential Suite'];
-const currencies = ['GBP', 'USD', 'EUR', 'JPY', 'SGD', 'THB', 'HKD', 'SAR', 'TRY', 'AED'];
 
 const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
   const isEdit = Boolean(room?.id);
@@ -19,7 +18,7 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
     const p = room?.price ?? room?.pricePerNight ?? room?.price_per_night ?? room?.pricePerNight;
     return (p !== undefined && p !== null && !Number.isNaN(Number(p))) ? Number(p) : 0;
   });
-  const [currency, setCurrency] = useState(room?.currency || room?.branchCurrency || 'GBP');
+  const [currency, setCurrency] = useState(room?.currency || room?.branchCurrency || 'USD');
   const [amenityInput, setAmenityInput] = useState('');
   const [amenities, setAmenities] = useState(() => {
     const a = room?.amenities;
@@ -35,7 +34,9 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const { rates } = useCurrency();
+  const { rates, supportedCurrencies } = useCurrency();
+  const currencyOptions = supportedCurrencies.length > 0 ? supportedCurrencies : Object.keys(rates || {}).sort();
+  const unsupportedCurrentCurrency = Boolean(currency && currencyOptions.length > 0 && !currencyOptions.includes(currency));
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -73,12 +74,14 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
           setAmenities(Object.keys(detail.amenities));
         }
         setTags(Array.isArray(detail.tags) ? detail.tags : tags);
-      } catch (err) {
-
+      } catch {
+        // Keep the summary data already supplied by the room list.
       }
     };
     load();
     return () => { cancelled = true; };
+  // Fetch once for the room that opened this modal; subsequent edits are local form state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleBackdropClick = (event) => {
@@ -121,9 +124,8 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
     if (!url) return;
     // basic URL validation
     try {
-      // eslint-disable-next-line no-new
       new URL(url);
-    } catch (e) {
+    } catch {
       setError('Invalid image URL');
       return;
     }
@@ -168,6 +170,10 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
     }
     if (!branchId && !isEdit) {
       setError('Branch is required to create a room.');
+      return false;
+    }
+    if (!currencyOptions.includes(currency)) {
+      setError('Choose a currency supported by the live exchange-rate provider.');
       return false;
     }
     setError('');
@@ -339,14 +345,21 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
                     const rounded = Math.round((converted + Number.EPSILON) * 100) / 100;
                     setPrice(rounded);
                     setCurrency(newCurr);
-                  } catch (err) {
-                    toast.error('Conversion unavailable — please use another currency');
-                    // Do not change price or selected currency when conversion fails
+                  } catch {
+                    // A legacy unsupported currency must still be repairable. Keep the numeric
+                    // value and ask the manager to review it after choosing a supported code.
+                    if (currencyOptions.includes(newCurr)) {
+                      setCurrency(newCurr);
+                      toast('Currency changed without conversion. Please review the nightly price.', { icon: '⚠️' });
+                    } else {
+                      toast.error('Conversion unavailable — please use another currency');
+                    }
                   }
                 }}
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0A7C6E] focus:bg-white focus:ring-2 focus:ring-[#0A7C6E]/20"
               >
-                {currencies.map((option) => (
+                {unsupportedCurrentCurrency ? <option value={currency} disabled>{currency} (unsupported — select another)</option> : null}
+                {currencyOptions.map((option) => (
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
