@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Star, MapPin, Edit2, Eye, Trash2, Plus, RefreshCw } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -20,7 +20,7 @@ const AdminHotels = () => {
 	const [confirmDelete, setConfirmDelete] = useState(null);
 	const navigate = useNavigate();
 
-	const loadHotels = async () => {
+	const loadHotels = useCallback(async () => {
 		setLoading(true);
 		setError('');
 		try {
@@ -32,11 +32,11 @@ const AdminHotels = () => {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [page, size]);
 
 	useEffect(() => {
-		loadHotels();
-	}, []);
+		void loadHotels();
+	}, [loadHotels]);
 
 	const handleEdit = async (hotel) => {
 		setEditingHotel(hotel);

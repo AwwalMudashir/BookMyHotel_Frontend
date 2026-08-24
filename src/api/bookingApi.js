@@ -2,7 +2,7 @@ import axiosInstance from './axiosInstance';
 
 // Purpose: Booking creation, lookup, and cancellation API helpers.
 const bookingApi = {
-  async createBooking({ roomId, checkIn, checkOut, promoCode, services = [], ecoPointsToRedeem = 0 }) {
+  async createBooking({ roomId, checkIn, checkOut, promoCode, packageId, services = [], ecoPointsToRedeem = 0 }) {
     const res = await axiosInstance.post('/bookings/create', {
       roomId,
       checkIn,
@@ -10,6 +10,7 @@ const bookingApi = {
       services,
       ecoPointsToRedeem,
       ...(promoCode ? { promoCode } : {}),
+      ...(packageId ? { packageId } : {}),
     });
     return res.data;
   },

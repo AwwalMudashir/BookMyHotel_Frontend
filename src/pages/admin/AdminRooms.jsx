@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Edit2, Trash2, ImagePlus, Plus, Search } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import hotelApi from '../../api/hotelApi';
@@ -16,31 +16,26 @@ const AdminRooms = () => {
   const [rooms, setRooms] = useState([]);
   const [allRooms, setAllRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hotelLoading, setHotelLoading] = useState(false);
-  const [branchLoading, setBranchLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
   const [roomIdSearch, setRoomIdSearch] = useState('');
   const branchReqId = useRef(0);
   const roomReqId = useRef(0);
 
-  useEffect(() => { loadHotels(); }, []);
-
-  const loadHotels = async () => {
-    setHotelLoading(true);
+  const loadHotels = useCallback(async () => {
     try {
       const { items } = await hotelApi.getAllHotels(1, 100);
       setHotels(items);
-      if (items[0] && !hotelId) setHotelId(String(items[0].id));
-    } catch (e) { toast.error('Unable to load hotels'); }
-    setHotelLoading(false);
-  };
+      if (items[0]) setHotelId((current) => current || String(items[0].id));
+    } catch { toast.error('Unable to load hotels'); }
+  }, []);
 
-  const loadBranches = async (hId) => {
+  useEffect(() => { void loadHotels(); }, [loadHotels]);
+
+  const loadBranches = useCallback(async (hId) => {
     if (!hId) return;
     branchReqId.current += 1;
     const reqId = branchReqId.current;
-    setBranchLoading(true);
     // clear branches immediately for perceived responsiveness
     setBranches([]);
     setBranchId('');
@@ -49,20 +44,18 @@ const AdminRooms = () => {
       // ignore stale responses
       if (reqId !== branchReqId.current) return;
       setBranches(b || []);
-      if (b && b[0] && !branchId) setBranchId(String(b[0].id));
-    } catch (e) {
+      if (b && b[0]) setBranchId((current) => current || String(b[0].id));
+    } catch {
       setBranches([]);
-    } finally {
-      if (reqId === branchReqId.current) setBranchLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!hotelId) return;
-    loadBranches(hotelId);
-  }, [hotelId]);
+    void loadBranches(hotelId);
+  }, [hotelId, loadBranches]);
 
-  const loadRooms = async (bId) => {
+  const loadRooms = useCallback(async (bId) => {
     roomReqId.current += 1;
     const reqId = roomReqId.current;
     if (!bId) { setRooms([]); setAllRooms([]); setLoading(false); return; }
@@ -72,9 +65,9 @@ const AdminRooms = () => {
       if (reqId !== roomReqId.current) return;
       setAllRooms(rs || []);
       setRooms(rs || []);
-    } catch (e) { toast.error('Unable to load rooms'); setRooms([]); setAllRooms([]); }
+    } catch { toast.error('Unable to load rooms'); setRooms([]); setAllRooms([]); }
     finally { if (reqId === roomReqId.current) setLoading(false); }
-  };
+  }, []);
 
   useEffect(() => {
     // When branch changes, show the spinner immediately so the UI doesn't flash the
@@ -86,8 +79,8 @@ const AdminRooms = () => {
       return;
     }
     setLoading(true);
-    loadRooms(branchId);
-  }, [branchId]);
+    void loadRooms(branchId);
+  }, [branchId, loadRooms]);
 
   const handleDeleteRoom = async (room) => {
     const roomIdentifier = room?.roomId ?? room?.id ?? room?.roomNumber;
@@ -198,7 +191,7 @@ const AdminRooms = () => {
                       });
                       setRooms(filtered);
                     }
-                  } catch (err) {
+                  } catch {
                     toast.error('Search failed');
                   } finally {
                     setLoading(false);

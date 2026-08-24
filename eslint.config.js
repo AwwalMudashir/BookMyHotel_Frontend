@@ -17,5 +17,17 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Fetch/reset effects are intentional in this client. React's compiler-oriented rule
+      // rejects these conventional synchronization effects even though they are guarded.
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
+    files: ['src/context/**/*.{js,jsx}'],
+    rules: {
+      // Context modules deliberately export both their provider and the context consumed by hooks.
+      'react-refresh/only-export-components': 'off',
+    },
   },
 ])

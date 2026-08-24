@@ -8,14 +8,16 @@ import PopularRooms from '../components/PopularRooms';
 import SiteFeatures from '../components/SiteFeatures';
 import AboutBookMyHotel from '../components/AboutBookMyHotel';
 import HomeCta from '../components/HomeCta';
+import HomePackagesSection from '../components/HomePackagesSection';
 
-const HomePage = () => (
+const HomePage = ({ initialAuthMode = null }) => (
   <div className="relative min-h-screen overflow-hidden bg-slate-50">
-    <Navbar variant="hero" />
+    <Navbar variant="hero" initialAuthMode={initialAuthMode} />
     <HomeHero />
     <FeaturedHotels />
     <PopularRooms />
     <HomePromotionsCarousel />
+    <HomePackagesSection />
     <HomePromoSubscription />
     <SiteFeatures />
     <AboutBookMyHotel />

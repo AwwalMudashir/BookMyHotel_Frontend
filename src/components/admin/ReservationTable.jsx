@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CheckCircle2, Loader2, Leaf, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -13,11 +14,12 @@ const statusClasses = {
 // this is not a raw status editor, so actions are only offered where they're a real transition.
 const ReservationTable = ({ bookings = [], roomsById = {}, actingId = null, onConfirm, onCancel }) => {
   const { format: formatPrice } = useCurrency();
+  const [renderedAt] = useState(() => Date.now());
 
   const isPastCheckout = (booking) => {
     if (!booking?.checkOut) return false;
     const checkoutDate = new Date(`${booking.checkOut}T00:00:00`);
-    return Date.now() > checkoutDate.getTime() && booking.status !== 'CANCELLED';
+    return renderedAt > checkoutDate.getTime() && booking.status !== 'CANCELLED';
   };
 
   if (bookings.length === 0) {

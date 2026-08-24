@@ -12,6 +12,7 @@ import roomApi from '../../api/roomApi';
 import availabilityApi from '../../api/availabilityApi';
 import serviceApi from '../../api/serviceApi';
 import promotionApi from '../../api/promotionApi';
+import packageApi from '../../api/packageApi';
 import bookingApi from '../../api/bookingApi';
 import hotelApi from '../../api/hotelApi';
 import { listAmenities } from '../../utils/amenities';
@@ -21,6 +22,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import useUnsavedChangesWarning from '../../hooks/useUnsavedChangesWarning';
 import { parseApiError } from '../../utils/parseApiError';
 import Footer from '../../components/core/Footer';
+import OffSeasonPackageSelector from '../../components/booking/OffSeasonPackageSelector';
 
 const toIsoDate = (date) => format(date, 'yyyy-MM-dd');
 const toLabel = (date) => format(date, 'EEE, d MMM');
@@ -71,6 +73,12 @@ const RoomDetailPage = () => {
   const [promoResult, setPromoResult] = useState(null);
   const [promoError, setPromoError] = useState('');
   const [ecoPointsToRedeem, setEcoPointsToRedeem] = useState(0);
+  const [packages, setPackages] = useState([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState(null);
+  const [packageQuote, setPackageQuote] = useState(null);
+  const [packageQuoteLoading, setPackageQuoteLoading] = useState(false);
+  const [packageQuoteError, setPackageQuoteError] = useState('');
   const [hotelId, setHotelId] = useState(null);
   const [hotelName, setHotelName] = useState('');
 
@@ -84,6 +92,7 @@ const RoomDetailPage = () => {
     || dateRange?.to
     || promoCode.trim()
     || ecoPointsToRedeem > 0
+    || selectedPackageId
     || Object.keys(selectedServices).length > 0,
   );
   useUnsavedChangesWarning(hasBookingDraft && !submitting);
@@ -174,6 +183,24 @@ const RoomDetailPage = () => {
   }, [room?.id, calendarRequestKey]);
 
   useEffect(() => {
+    let cancelled = false;
+    if (!room?.id) return undefined;
+    const loadPackages = async () => {
+      setPackagesLoading(true);
+      try {
+        const items = await packageApi.getForRoom(room.id);
+        if (!cancelled) setPackages(items);
+      } catch {
+        if (!cancelled) setPackages([]);
+      } finally {
+        if (!cancelled) setPackagesLoading(false);
+      }
+    };
+    void loadPackages();
+    return () => { cancelled = true; };
+  }, [room?.id]);
+
+  useEffect(() => {
     if (!room?.branchId) return;
     let cancelled = false;
 
@@ -208,22 +235,16 @@ const RoomDetailPage = () => {
   }, [room?.branchId, room?.hotelId, room?.branchName, hotelName]);
 
   useEffect(() => {
-    if (room?.hotelId) setHotelId(room.hotelId);
-  }, [room?.hotelId]);
-
-  useEffect(() => {
     if (!checkIn || !checkOut) return;
     // Do not call price API for zero-night ranges (same checkIn and checkOut) — backend
     // expects a valid range with at least one night and may return 500 for invalid inputs.
-    const nightsForRange = differenceInDays(checkOut, checkIn);
-    if (nightsForRange <= 0) {
-      setPriceInfo(null);
-      setPriceError('Please select at least one night for your stay.');
-      return;
-    }
-
     let cancelled = false;
     const loadPrice = async () => {
+      if (differenceInDays(checkOut, checkIn) <= 0) {
+        setPriceInfo(null);
+        setPriceError('Please select at least one night for your stay.');
+        return;
+      }
       setPriceLoading(true);
       setPriceError('');
       try {
@@ -307,6 +328,42 @@ const RoomDetailPage = () => {
 
   // Already in the selected display currency — the price call above was made with targetCurrency set.
   const roomSubtotal = activePriceInfo?.totalPrice ?? 0;
+  const selectedPackage = packages.find((offer) => Number(offer.id) === Number(selectedPackageId)) || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedPackageId || !room?.id || !checkIn || !checkOut || !roomSubtotal || priceLoading) {
+      return undefined;
+    }
+    const loadQuote = async () => {
+      setPackageQuoteLoading(true);
+      setPackageQuoteError('');
+      try {
+        const result = await packageApi.quote({ packageId: Number(selectedPackageId), roomId: room.id, checkIn: toIsoDate(checkIn), checkOut: toIsoDate(checkOut), roomSubtotal, currency });
+        if (!cancelled) setPackageQuote(result);
+      } catch (err) {
+        if (!cancelled) {
+          setPackageQuote(null);
+          setPackageQuoteError(parseApiError(err, 'Unable to validate this package.'));
+        }
+      } finally {
+        if (!cancelled) setPackageQuoteLoading(false);
+      }
+    };
+    void loadQuote();
+    return () => { cancelled = true; };
+  }, [selectedPackageId, room?.id, checkIn, checkOut, roomSubtotal, currency, priceLoading]);
+
+  const handlePackageSelect = (packageId) => {
+    setSelectedPackageId(packageId);
+    setPackageQuote(null);
+    setPackageQuoteError('');
+    if (packageId) {
+      setPromoCode('');
+      setPromoResult(null);
+      setPromoError('');
+    }
+  };
 
   const handleServiceChange = (serviceId, quantity) => {
     setSelectedServices((current) => {
@@ -328,6 +385,10 @@ const RoomDetailPage = () => {
 
   const handlePromoApply = async () => {
     if (!promoCode.trim() || !nights) return;
+    if (selectedPackageId) {
+      setPromoError('Remove the selected off-season package before applying a promo code.');
+      return;
+    }
     setPromoApplying(true);
     setPromoError('');
     try {
@@ -449,6 +510,7 @@ const RoomDetailPage = () => {
         checkIn: toIsoDate(checkIn),
         checkOut: toIsoDate(checkOut),
         promoCode: promoResult?.promoCode || undefined,
+        packageId: selectedPackageId || undefined,
         services: serviceEntries,
         ecoPointsToRedeem,
       });
@@ -488,7 +550,8 @@ const RoomDetailPage = () => {
   };
 
   const canSubmit = Boolean(isAuthenticated && checkIn && checkOut && activePriceInfo?.isAvailable !== false && !priceLoading);
-  const effectiveCanSubmit = canSubmit && !pendingBooking && !checkingPending;
+  const packageReady = !selectedPackageId || (packageQuote?.eligible && !packageQuoteLoading);
+  const effectiveCanSubmit = canSubmit && packageReady && !pendingBooking && !checkingPending;
   const submitLabel = pendingBooking ? 'Reservation pending — complete payment' : 'Reserve now';
 
   return (
@@ -581,6 +644,16 @@ const RoomDetailPage = () => {
                   })}
                 </div>
               </div>
+
+              <OffSeasonPackageSelector
+                packages={packages}
+                loading={packagesLoading}
+                selectedPackageId={selectedPackageId}
+                onSelect={handlePackageSelect}
+                quote={packageQuote}
+                quoteLoading={packageQuoteLoading}
+                quoteError={packageQuoteError}
+              />
 
               {(servicesLoading || services.length > 0) ? (
                 <section className="rounded-[28px] border border-[#E5E7EB] bg-white p-6 shadow-sm sm:p-8">
@@ -744,6 +817,11 @@ const RoomDetailPage = () => {
               promoApplying={promoApplying}
               promoResult={promoResult}
               promoError={promoError}
+              selectedPackage={selectedPackage}
+              packageQuote={packageQuote}
+              packageQuoteLoading={packageQuoteLoading}
+              packageQuoteError={packageQuoteError}
+              onPackageRemove={() => handlePackageSelect(null)}
               availableEcoPoints={pendingBooking ? 0 : (user?.ecoPoints || 0)}
               ecoPointsToRedeem={ecoPointsToRedeem}
               onEcoPointsChange={setEcoPointsToRedeem}

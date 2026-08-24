@@ -23,7 +23,7 @@ export const parseApiError = (error, fallback = 'Something went wrong. Please tr
       if (/\/auth\/register/.test(reqUrl)) {
         return 'Registration failed. Please check your input.';
       }
-    } catch (e) {
+    } catch {
       // ignore regex failures and fall through
     }
 

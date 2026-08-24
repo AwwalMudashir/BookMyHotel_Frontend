@@ -93,8 +93,8 @@ const HotelListPage = () => {
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {hotels.map((hotel) => (
-              <HotelCard key={hotel?.id ?? hotel?.name ?? Math.random()} hotel={hotel} />
+            {hotels.map((hotel, index) => (
+              <HotelCard key={hotel?.id ?? hotel?.name ?? `hotel-${index}`} hotel={hotel} />
             ))}
           </div>
         )}

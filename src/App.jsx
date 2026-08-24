@@ -21,7 +21,13 @@ function App() {
           <CurrencyProvider>
             <BookingProvider>
               <div className="min-h-screen bg-[#F8F9FA]">
-                <Toaster position="top-right" />
+                <Toaster
+                  position="top-center"
+                  toastOptions={{
+                    duration: 4000,
+                    style: { maxWidth: 'min(360px, calc(100vw - 2rem))' },
+                  }}
+                />
                 <FormRefreshGuard />
                 <AppRouter />
               </div>

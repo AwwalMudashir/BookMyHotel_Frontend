@@ -82,40 +82,30 @@ const normalizeHotelCollection = (payload) => {
 
 const hotelApi = {
   async getAllHotels(page = 1, size = 100) {
-    console.info('[hotelApi] getAllHotels request', { page, size });
     const response = await axiosInstance.get('/hotel/all', {
       params: { page, size },
     });
-    console.info('[hotelApi] getAllHotels response', response.data);
     return normalizeHotelCollection(response.data);
   },
 
   async getHotelById(id) {
-    console.info('[hotelApi] getHotelById request', { id });
     const response = await axiosInstance.get(`/hotel/${id}`);
-    console.info('[hotelApi] getHotelById response', response.data);
     return normalizeHotel(response.data);
   },
 
   async getHotelBranches(id) {
-    console.info('[hotelApi] getHotelBranches request', { id });
     const response = await axiosInstance.get(`/hotel/${id}/branches`);
-    console.info('[hotelApi] getHotelBranches response', response.data);
     return Array.isArray(response.data) ? response.data.map(normalizeBranch).filter(Boolean) : [];
   },
 
   // Full branch detail — the only endpoint documented to carry ecoCertified/ecoTags/ecoScore.
   async getBranchById(id) {
-    console.info('[hotelApi] getBranchById request', { id });
     const response = await axiosInstance.get(`/branch/${id}`);
-    console.info('[hotelApi] getBranchById response', response.data);
     return normalizeBranch(response.data);
   },
 
   async getBranchRooms(branchId) {
-    console.info('[hotelApi] getBranchRooms request', { branchId });
     const response = await axiosInstance.get(`/branch/${branchId}/rooms`);
-    console.info('[hotelApi] getBranchRooms response', response.data);
     return Array.isArray(response.data) ? response.data : [];
   },
 

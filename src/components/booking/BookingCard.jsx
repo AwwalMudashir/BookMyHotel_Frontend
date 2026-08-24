@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, CalendarDays, CreditCard, Hash, Leaf, MapPin, Sparkles, Star, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarDays, CreditCard, Gift, Hash, Leaf, MapPin, Sparkles, Star, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -62,6 +62,7 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
     && parseISO(booking.checkIn) <= today
     && parseISO(booking.checkOut) > today;
   const hasBookingDetails = booking.services?.length > 0
+    || Boolean(booking.packageName)
     || (booking.status === 'CONFIRMED' && booking.ecoPointsEarned > 0)
     || booking.ecoPointsRedeemed > 0
     || isEarlyCheckoutCancellation
@@ -118,6 +119,13 @@ const BookingCard = ({ booking, room, roomLoading, payment, canCancel, onCancel,
 
         {hasBookingDetails ? (
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+            {booking.packageName ? (
+              <div className="min-w-0 rounded-2xl border border-[#CDE7DE] bg-[#F1FAF7] px-3 py-2.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#0A7C6E]"><Gift className="h-3.5 w-3.5 shrink-0" /> Off-season package</p>
+                <p className="mt-2 text-sm font-semibold text-[#1A1A2E]">{booking.packageName}</p>
+                <p className="mt-1 text-xs text-[#6B7280]">{booking.packageCode}{booking.packageDiscount > 0 ? ` · saved ${formatPrice(booking.packageDiscount, room?.currency)}` : ''}</p>
+              </div>
+            ) : null}
             {booking.services?.length > 0 ? (
               <div className="min-w-0 rounded-2xl border border-[#DCEFEA] bg-[#F4FBF9] px-3 py-2.5">
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#0A7C6E]">

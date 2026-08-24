@@ -64,7 +64,7 @@ const clearStoredAuth = () => {
 // Only these exact endpoints are public authentication operations. A prefix match here would
 // also classify protected routes such as /auth/register/hotel-manager as public and strip the
 // administrator's bearer token from the request.
-const isAuthRequest = (url = '') => /^\/?auth\/(login|register|google|refresh|logout|forgot-password|resend-otp|verify-otp|reset-password)\/?(?:\?|$)/.test(url);
+const isAuthRequest = (url = '') => /^\/?auth\/(login|register|google|refresh|logout|forgot-password|resend-otp|verify-otp)\/?(?:\?|$)/.test(url);
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -89,9 +89,28 @@ const forceLogout = (message = 'Your session has expired. Please log in again.')
   clearStoredAuth();
   if (loggingOut) return;
   loggingOut = true;
-  toast.error(message);
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('auth:logout'));
+    window.dispatchEvent(new CustomEvent('auth:logout', {
+      detail: { reason: 'session-expired' },
+    }));
+
+    try {
+      window.sessionStorage.setItem(AUTH_STORAGE_KEYS.sessionNotice, message);
+    } catch {
+      // The login screen still opens even when storage is unavailable.
+    }
+
+    if (window.location.pathname !== '/login') {
+      window.location.replace('/login?reason=session-expired');
+      return;
+    }
+
+    try {
+      window.sessionStorage.removeItem(AUTH_STORAGE_KEYS.sessionNotice);
+    } catch {
+      // Ignore storage errors; the toast still explains what happened.
+    }
+    toast.error(message, { id: 'session-expired', duration: 4000 });
   }
   // Allow a fresh logout notice once the user has had a chance to sign in again.
   setTimeout(() => { loggingOut = false; }, 1000);
@@ -110,6 +129,9 @@ export const refreshAccessToken = () => {
 
   const storedRefreshToken = getStoredValue(AUTH_STORAGE_KEYS.refreshToken);
   if (!storedRefreshToken) {
+    if (getStoredValue(AUTH_STORAGE_KEYS.token)) {
+      forceLogout();
+    }
     return Promise.reject(new Error('No refresh token available'));
   }
 
@@ -210,6 +232,7 @@ axiosInstance.interceptors.response.use(
     // Already refreshed once for this request and it is still unauthorised —
     // retrying again would loop.
     if (originalRequest._retry) {
+      forceLogout('Your session could not be verified. Please log in again.');
       return Promise.reject(error);
     }
 
@@ -219,7 +242,7 @@ axiosInstance.interceptors.response.use(
       // that expired. Only announce "you have to log in" when there was an
       // access token to begin with, so anonymous browsing stays silent.
       if (getStoredValue(AUTH_STORAGE_KEYS.token)) {
-        forceLogout('You have to log in');
+        forceLogout();
       }
       return Promise.reject(error);
     }

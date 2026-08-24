@@ -21,7 +21,6 @@ const userApi = {
   async updateMe(payload) {
     try {
       const response = await axiosInstance.put('/auth/me', payload);
-      console.log('updateMe response', response);
       return response.data;
     } catch (error) {
       throw normalizeError(error);

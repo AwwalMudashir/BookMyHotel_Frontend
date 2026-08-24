@@ -38,7 +38,6 @@ const PromotionManager = ({ hotelId }) => {
 
   useEffect(() => {
     if (!hotelId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetching on hotelId change, not a render-time reset
     loadPromotions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelId]);

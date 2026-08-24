@@ -15,7 +15,6 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import KpiCard from '../../components/admin/KpiCard';
 import Spinner from '../../components/core/Spinner';
 import analyticsApi from '../../api/analyticsApi';
-import hotelApi from '../../api/hotelApi';
 import roomApi from '../../api/roomApi';
 import { parseApiError } from '../../utils/parseApiError';
 
@@ -39,7 +38,6 @@ const AdminHotelReport = () => {
   const [endDate, setEndDate] = useState(todayString);
 
   const [summary, setSummary] = useState(null);
-  const [currency, setCurrency] = useState(null); // null = mixed/unknown across branches
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,14 +54,9 @@ const AdminHotelReport = () => {
       setLoading(true);
       setError('');
       try {
-        const [hotelSummary, branches] = await Promise.all([
-          analyticsApi.getHotelSummary(hotelId, { startDate, endDate }),
-          hotelApi.getHotelBranches(hotelId),
-        ]);
+        const hotelSummary = await analyticsApi.getHotelSummary(hotelId, { startDate, endDate });
         if (cancelled) return;
         setSummary(hotelSummary);
-        const currencies = new Set(branches.map((branch) => branch.currency).filter(Boolean));
-        setCurrency(currencies.size === 1 ? [...currencies][0] : null);
       } catch (err) {
         if (!cancelled) setError(parseApiError(err, 'Unable to load this hotel\'s analytics right now.'));
       } finally {
@@ -100,11 +93,6 @@ const AdminHotelReport = () => {
         .finally(() => inFlightRoomIds.current.delete(id));
     });
   }, [lookupResults, roomsById]);
-
-  const formatMoney = (amount) => {
-    const value = Number(amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return currency ? `${currency} ${value}` : value;
-  };
 
   return (
     <AdminLayout>

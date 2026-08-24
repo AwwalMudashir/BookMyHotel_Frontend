@@ -50,6 +50,7 @@ const ProfilePage = () => {
     const [otpEntryId, setOtpEntryId] = useState('');
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpVerified, setOtpVerified] = useState(false);
+    const [resetToken, setResetToken] = useState('');
 
     const passwordStrength = useMemo(() => getPasswordStrength(passwords.newPassword), [passwords.newPassword]);
 
@@ -138,6 +139,7 @@ const ProfilePage = () => {
             setOtpStep('verify');
             setOtpValue('');
             setOtpVerified(false);
+            setResetToken('');
             toast.success('A verification code has been sent to your email.');
         } catch (err) {
             toast.error(err.message || 'We could not send the verification code.');
@@ -156,12 +158,16 @@ const ProfilePage = () => {
 
         try {
             const otpCode = otpValue.trim();
-            await userApi.verifyOtp({
+            const response = await userApi.verifyOtp({
                 entryId: otpEntryId,
                 email: form.email,
                 otpValue: otpCode,
             });
+            if (!response?.resetToken) {
+                throw new Error('The server did not return a secure password-reset token. Please request a new code.');
+            }
 
+            setResetToken(response.resetToken);
             setOtpStep('reset');
             setOtpValue('');
             setOtpVerified(true);
@@ -201,6 +207,8 @@ const ProfilePage = () => {
             await userApi.resetPassword({
                 oldPassword: passwords.currentPassword,
                 newPassword: passwords.newPassword,
+                confirmPassword: passwords.confirmPassword,
+                resetToken,
             });
             toast.success('Your password has been updated.');
             setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -208,6 +216,7 @@ const ProfilePage = () => {
             setOtpEntryId('');
             setOtpStep('request');
             setOtpVerified(false);
+            setResetToken('');
         } catch (err) {
             toast.error(err.message || 'We could not update your password.');
         }

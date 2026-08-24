@@ -59,7 +59,7 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
     const load = async () => {
       if (!isEdit || (room?.images && room?.images.length)) return;
       try {
-        const detail = await import('../../api/roomApi').then(m => m.default.getRoomById(room.id));
+        const detail = await roomApi.getRoomById(room.id);
         if (cancelled) return;
         setImages(detail.images || []);
         setPublicIds(detail.publicIds || []);
@@ -145,17 +145,16 @@ const RoomFormModal = ({ branchId, room = null, onClose = () => {} }) => {
     if (!pid && !imgUrl) return; // nothing to delete
     const roomId = room?.id;
     try {
-      const api = await import('../../api/roomApi').then(m => m.default);
       if (pid) {
-        await api.deleteRoomImage(branchId, roomId, pid, undefined);
+        await roomApi.deleteRoomImage(branchId, roomId, pid, undefined);
       } else {
-        await api.deleteRoomImage(branchId, roomId, undefined, imgUrl);
+        await roomApi.deleteRoomImage(branchId, roomId, undefined, imgUrl);
       }
       // remove from local arrays (both may exist)
       setPublicIds((current) => (current ? current.filter((_, i) => i !== idx) : current));
       setImages((current) => (current ? current.filter((_, i) => i !== idx) : current));
     } catch (err) {
-      alert(err?.message || 'Unable to delete image');
+      toast.error(err?.message || 'Unable to delete image.');
     }
   };
 

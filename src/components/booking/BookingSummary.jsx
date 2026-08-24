@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ArrowRight, CalendarDays, Info, Leaf, Loader2 } from 'lucide-react';
+import { ArrowRight, CalendarDays, Gift, Info, Leaf, Loader2, X } from 'lucide-react';
 import PromoCodeInput from './PromoCodeInput';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -23,6 +23,11 @@ const BookingSummary = ({
   promoApplying,
   promoResult,
   promoError,
+  selectedPackage,
+  packageQuote,
+  packageQuoteLoading,
+  packageQuoteError,
+  onPackageRemove,
   availableEcoPoints = 0,
   ecoPointsToRedeem = 0,
   onEcoPointsChange,
@@ -41,19 +46,21 @@ const BookingSummary = ({
   const convertedServicesTotal = rawServicesTotal > 0 ? convert(rawServicesTotal, 'USD') : 0;
   const serviceConversionUnavailable = rawServicesTotal > 0 && convertedServicesTotal === null;
   const servicesTotalForSum = convertedServicesTotal ?? 0;
-  const discountAmount = promoResult?.discountAmount || 0;
-  const roomAfterPromo = Math.max(0, (roomSubtotal || 0) - discountAmount);
+  const promoDiscount = promoResult?.discountAmount || 0;
+  const packageDiscount = selectedPackage && packageQuote?.eligible ? Number(packageQuote.discountAmount || 0) : 0;
+  const discountAmount = packageDiscount || promoDiscount;
+  const roomAfterOffer = Math.max(0, (roomSubtotal || 0) - discountAmount);
   const oneUsdInDisplayCurrency = convert(1, 'USD');
   const walletValue = convert(availableEcoPoints / 10, 'USD');
   const maximumPointsForRoom = oneUsdInDisplayCurrency > 0
-    ? Math.max(0, Math.min(availableEcoPoints, Math.floor((roomAfterPromo / oneUsdInDisplayCurrency) * 10)))
+    ? Math.max(0, Math.min(availableEcoPoints, Math.floor((roomAfterOffer / oneUsdInDisplayCurrency) * 10)))
     : 0;
   const safeEcoPoints = Math.min(ecoPointsToRedeem, maximumPointsForRoom);
   const convertedEcoDiscount = convert(safeEcoPoints / 10, 'USD');
-  const ecoDiscount = Math.min(roomAfterPromo, convertedEcoDiscount || 0);
+  const ecoDiscount = Math.min(roomAfterOffer, convertedEcoDiscount || 0);
   const grandTotal = serviceConversionUnavailable
     ? null
-    : Math.max(0, roomAfterPromo + servicesTotalForSum - ecoDiscount);
+    : Math.max(0, roomAfterOffer + servicesTotalForSum - ecoDiscount);
   const selectedServiceList = services.filter((service) => selectedServices[service.id] > 0);
 
   useEffect(() => {
@@ -97,6 +104,16 @@ const BookingSummary = ({
               </div>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {selectedPackage ? (
+        <div className="rounded-2xl border border-[#CDE7DE] bg-[#F1FAF7] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0A7C6E] text-white"><Gift className="h-4 w-4" /></span><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-[#0A7C6E]">Selected package</p><p className="mt-0.5 truncate text-sm font-semibold text-[#1A1A2E]">{selectedPackage.name}</p><p className="mt-1 font-mono text-[11px] text-[#6B7280]">{selectedPackage.code}</p></div></div>
+            <button type="button" onClick={onPackageRemove} className="rounded-full p-1.5 text-slate-500 hover:bg-white" aria-label="Remove selected package"><X size={15} /></button>
+          </div>
+          {packageQuoteLoading ? <p className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Loader2 size={13} className="animate-spin" />Checking dates and package price…</p> : packageQuote?.eligible ? <p className="mt-3 text-xs font-medium text-[#0A7C6E]">Saving {format(packageDiscount, currency)} on the room price.</p> : <p className="mt-3 text-xs leading-5 text-amber-700">{packageQuoteError || packageQuote?.message || 'Select eligible dates to activate this package.'}</p>}
         </div>
       ) : null}
 
@@ -157,7 +174,7 @@ const BookingSummary = ({
                 <span>Saving {format(ecoDiscount, currency)}</span>
               </div>
               <p className="mt-2 text-[11px] leading-relaxed text-[#6B7280]">
-                Points reduce the room price after any promo. Paid services are not discounted.
+                Points reduce the room price after the selected package or promo. Paid services are not discounted.
               </p>
             </div>
           ) : null}
@@ -166,6 +183,7 @@ const BookingSummary = ({
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7280]">Promo code</p>
+        {selectedPackage ? <p className="mb-2 text-[11px] leading-4 text-slate-500">Remove the package above if you prefer to use a promo code.</p> : null}
         <PromoCodeInput
           code={promoCode}
           onCodeChange={onPromoCodeChange}
@@ -174,7 +192,7 @@ const BookingSummary = ({
           applying={promoApplying}
           result={promoResult}
           error={promoError}
-          disabled={!nights}
+          disabled={!nights || Boolean(selectedPackage)}
         />
       </div>
 
@@ -189,10 +207,16 @@ const BookingSummary = ({
             <span className="text-[#1A1A2E]">{format(rawServicesTotal, 'USD')}</span>
           </div>
         ) : null}
-        {discountAmount > 0 ? (
+        {packageDiscount > 0 ? (
+          <div className="flex items-center justify-between text-[#0A7C6E]">
+            <span>Package discount</span>
+            <span>-{format(packageDiscount, currency)}</span>
+          </div>
+        ) : null}
+        {promoDiscount > 0 ? (
           <div className="flex items-center justify-between text-[#0A7C6E]">
             <span>Promo discount</span>
-            <span>-{format(discountAmount, currency)}</span>
+            <span>-{format(promoDiscount, currency)}</span>
           </div>
         ) : null}
         {ecoDiscount > 0 ? (

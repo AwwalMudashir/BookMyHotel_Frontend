@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import adminApi from '../../api/adminApi';
 import authApi from '../../api/authApi';
@@ -45,7 +45,7 @@ const AdminUsers = () => {
   const [creating, setCreating] = useState(false);
   const [payload, setPayload] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'ADMIN', hotelId: '' });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await adminApi.getUsers();
@@ -54,25 +54,21 @@ const AdminUsers = () => {
         setUsers(res);
       } else if (res && typeof res === 'object') {
         // New categorized format
-        const allUsers = [];
-        if (Array.isArray(res.admins)) allUsers.push(...res.admins);
-        if (Array.isArray(res.hotelManagers)) allUsers.push(...res.hotelManagers);
-        if (Array.isArray(res.customers)) allUsers.push(...res.customers);
         setUsers(res); // Store the categorized object
       } else {
         setUsers([]);
       }
-    } catch (e) {
+    } catch {
       toast.error('Unable to load users');
     } finally { setLoading(false); }
-  };
+  }, []);
 
   useEffect(() => {
-    load();
+    void load();
     hotelApi.getAllHotels(0, 100)
       .then((result) => setHotels(result.items || []))
       .catch(() => setHotels([]));
-  }, []);
+  }, [load]);
 
   const removeUser = async (id) => {
     if (!confirm('Remove this user?')) return;
@@ -80,7 +76,7 @@ const AdminUsers = () => {
       await adminApi.deleteUser(id);
       toast.success('User removed');
       load();
-    } catch (e) { toast.error('Unable to remove user'); }
+    } catch { toast.error('Unable to remove user'); }
   };
 
   const validate = () => {

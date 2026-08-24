@@ -7,6 +7,7 @@ const tabs = [
   { to: '/admin/rooms', label: 'Rooms' },
   { to: '/admin/reservations', label: 'Reservations' },
   { to: '/admin/promotions', label: 'Promotions' },
+  { to: '/admin/packages', label: 'Packages' },
   { to: '/admin/services', label: 'Services' },
 ];
 

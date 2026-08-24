@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, Leaf, LayoutDashboard, LogOut, Tag, X } from 'lucide-react';
+import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, Gift, Leaf, LayoutDashboard, LogOut, Tag, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const links = [
@@ -10,6 +10,7 @@ const links = [
   { to: '/manager/reservations', label: 'Reservations', icon: CalendarDays },
   { to: '/manager/services', label: 'Services', icon: ConciergeBell },
   { to: '/manager/promotions', label: 'Promotions', icon: Tag },
+  { to: '/manager/packages', label: 'Off-season packages', icon: Gift },
   { to: '/manager/sustainability-tags', label: 'Sustainability tags', icon: Leaf },
 ];
 

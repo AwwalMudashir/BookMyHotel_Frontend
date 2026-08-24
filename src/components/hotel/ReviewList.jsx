@@ -53,7 +53,7 @@ const ReviewList = ({ branchId }) => {
     }
   };
 
-  const handleSubmitted = (review) => {
+  const handleSubmitted = () => {
     setWriteOpen(false);
     // Force a reload of reviews (reset to first page and bump refresh key)
     setPage(0);

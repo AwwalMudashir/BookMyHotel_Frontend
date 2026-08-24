@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Gift, Leaf, ShieldCheck, Sparkles } from 'lucide-react';
 import Navbar from '../../components/core/Navbar';
 import StripeForm from '../../components/payment/StripeForm';
 import stripePromise from '../../lib/stripe';
@@ -88,7 +88,6 @@ const PaymentPage = () => {
   useEffect(() => {
     // loadIntent is also reused by the "Try again" button, which is why it's declared
     // outside the effect rather than as an effect-local function.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadIntent();
     // Re-run if either param changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,6 +163,12 @@ const PaymentPage = () => {
                     <CalendarDays className="h-4 w-4 text-[#0A7C6E]" />
                     {bookingDetails.checkIn} → {bookingDetails.checkOut}
                   </p>
+                  {bookingDetails.packageName ? (
+                    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[#CDE7DE] bg-[#F1FAF7] px-3 py-2.5 text-sm">
+                      <span className="flex min-w-0 items-center gap-2 font-medium text-[#1A1A2E]"><Gift className="h-4 w-4 shrink-0 text-[#0A7C6E]" /><span className="truncate">{bookingDetails.packageName} <span className="font-mono text-xs text-slate-500">({bookingDetails.packageCode})</span></span></span>
+                      <span className="shrink-0 font-semibold text-[#0A7C6E]">-{format(bookingDetails.packageDiscount, intent.currency)}</span>
+                    </div>
+                  ) : null}
                   {bookingDetails.services?.length > 0 ? (
                     <div className="mt-4 border-t border-[#E5E7EB] pt-3">
                       <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7C6E]"><Sparkles className="h-3.5 w-3.5" /> Included services</p>

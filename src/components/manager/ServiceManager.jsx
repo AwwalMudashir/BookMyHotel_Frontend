@@ -66,7 +66,6 @@ const ServiceManager = ({ hotelId }) => {
 
   useEffect(() => {
     // The same loader is intentionally shared with the retry action.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 

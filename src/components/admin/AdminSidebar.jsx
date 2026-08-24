@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, Leaf, LayoutDashboard, LogOut, MapPin, Tag, Users, X } from 'lucide-react';
+import { ArrowLeftRight, BedDouble, Building2, CalendarDays, ChevronLeft, ConciergeBell, Gift, Leaf, LayoutDashboard, LogOut, MapPin, Tag, Users, X } from 'lucide-react';
 import authApi from '../../api/authApi';
 import { AUTH_STORAGE_KEYS } from '../../utils/constants';
 
@@ -140,6 +140,16 @@ const AdminSidebar = ({ collapsed, mobileOpen = false, onCloseMobile = () => {},
                     <ConciergeBell size={18} />
                   </span>
                   {!collapsed && 'Services'}
+                </>
+              )}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/admin/packages" title={collapsed ? 'Off-season packages' : undefined} className={getNavLinkClassName}>
+              {({ isActive }) => (
+                <>
+                  <span className={getNavIconClassName(isActive)}><Gift size={18} /></span>
+                  {!collapsed && 'Off-season packages'}
                 </>
               )}
             </NavLink>

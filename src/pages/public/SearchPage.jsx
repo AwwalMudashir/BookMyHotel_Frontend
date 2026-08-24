@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Search, SlidersHorizontal, ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/core/Navbar';
@@ -68,10 +68,10 @@ const SearchPage = () => {
   const [hotelOptions, setHotelOptions] = useState([]);
   const [hotelsLoading, setHotelsLoading] = useState(true);
   const debounceRef = useRef(null);
-  const mountedRef = useRef(false);
+  const firstSearchRef = useRef(true);
   const resultsRef = useRef(null);
 
-  const buildParams = (activeFilters, activeSort, activePage) => {
+  const buildParams = useCallback((activeFilters, activeSort, activePage) => {
     const params = {};
     if (activeFilters.checkIn) params.checkIn = activeFilters.checkIn;
     if (activeFilters.checkOut) params.checkOut = activeFilters.checkOut;
@@ -93,9 +93,9 @@ const SearchPage = () => {
     params.size = 12;
     if (activeSort) params.sort = activeSort;
     return params;
-  };
+  }, [currency]);
 
-  const syncUrl = (activeFilters, activeSort, activePage) => {
+  const syncUrl = useCallback((activeFilters, activeSort, activePage) => {
     const params = new URLSearchParams();
     if (activeFilters.checkIn) params.set('checkIn', activeFilters.checkIn);
     if (activeFilters.checkOut) params.set('checkOut', activeFilters.checkOut);
@@ -111,9 +111,9 @@ const SearchPage = () => {
     if (activeSort && activeSort !== DEFAULT_SORT) params.set('sort', activeSort);
     if (activePage && activePage !== DEFAULT_PAGE) params.set('page', String(activePage));
     setSearchParams(params);
-  };
+  }, [setSearchParams]);
 
-  const performSearch = async (activeFilters, activePage, activeSort) => {
+  const performSearch = useCallback(async (activeFilters, activePage, activeSort) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -132,7 +132,7 @@ const SearchPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [buildParams, syncUrl]);
 
   useEffect(() => {
     let active = true;
@@ -155,26 +155,16 @@ const SearchPage = () => {
   }, []);
 
   useEffect(() => {
-    mountedRef.current = true;
-    let initialSearchTimer;
-    if (initialSearch.filters.checkIn && initialSearch.filters.checkOut) {
-      initialSearchTimer = window.setTimeout(() => {
-        performSearch(initialSearch.filters, initialSearch.page, initialSearch.sort);
-      }, 0);
-    }
-
-    return () => window.clearTimeout(initialSearchTimer);
-  }, []);
-
-  useEffect(() => {
-    if (!mountedRef.current) return;
-    clearTimeout(debounceRef.current);
+    const isFirstSearch = firstSearchRef.current;
+    const searchPage = isFirstSearch ? initialSearch.page : DEFAULT_PAGE;
+    firstSearchRef.current = false;
+    window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      performSearch(filters, DEFAULT_PAGE, sort);
-      setCurrentPage(DEFAULT_PAGE);
-    }, 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [filters, currency]);
+      void performSearch(filters, searchPage, sort);
+      setCurrentPage(searchPage);
+    }, isFirstSearch ? 0 : 300);
+    return () => window.clearTimeout(debounceRef.current);
+  }, [currency, filters, initialSearch.page, performSearch, sort]);
 
   const handleFilterChange = (key, value) => {
     setFilters((previous) => {
@@ -190,13 +180,12 @@ const SearchPage = () => {
   const handleSortChange = (value) => {
     setSort(value);
     setCurrentPage(DEFAULT_PAGE);
-    performSearch(filters, DEFAULT_PAGE, value);
   };
 
   const handlePageChange = (pageIndex) => {
     if (pageIndex === currentPage) return;
     setCurrentPage(pageIndex);
-    performSearch(filters, pageIndex, sort);
+    void performSearch(filters, pageIndex, sort);
     if (resultsRef.current) {
       window.scrollTo({ top: resultsRef.current.offsetTop - 24, behavior: 'smooth' });
     }

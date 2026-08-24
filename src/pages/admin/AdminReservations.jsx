@@ -73,7 +73,6 @@ const AdminReservations = () => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetching on filter/page change, not a render-time reset
     loadReservations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelId, date, status, page]);

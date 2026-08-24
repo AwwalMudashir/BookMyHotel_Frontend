@@ -1,21 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Hotel, Compass, Mail, Menu, Sparkles, X, LogIn, LogOut, UserCircle, LayoutGrid, Leaf } from 'lucide-react';
+import { Hotel, Compass, Gift, Mail, Menu, Sparkles, X, LogIn, LogOut, UserCircle, LayoutGrid, Leaf } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AuthModal from './AuthModal';
 import CurrencySwitcher from './CurrencySwitcher';
 import { useAuth } from '../../hooks/useAuth';
+import { AUTH_STORAGE_KEYS } from '../../utils/constants';
 
 const guestLinks = [
-  { to: '/', label: 'Home', icon: Home },
   { to: '/hotels', label: 'Hotels', icon: Hotel },
   { to: '/search', label: 'Activities', icon: Compass },
+  { to: '/packages', label: 'Packages', icon: Gift },
   { to: '/contact', label: 'Contact', icon: Mail },
 ];
 
-const linkBaseClasses = 'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors';
+const linkBaseClasses = 'flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[13px] font-medium transition-colors';
 
-const Navbar = ({ variant = 'default' }) => {
+const Navbar = ({ variant = 'default', initialAuthMode = null }) => {
   const {
     login: loginUser,
     loginWithGoogle,
@@ -29,8 +30,8 @@ const Navbar = ({ variant = 'default' }) => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
+  const [authOpen, setAuthOpen] = useState(() => Boolean(initialAuthMode) && !isAuthenticated);
+  const [authMode, setAuthMode] = useState(initialAuthMode || 'login');
   const [authSuccessMessage, setAuthSuccessMessage] = useState('');
   const authTransitionTimer = useRef(null);
 
@@ -72,9 +73,22 @@ const Navbar = ({ variant = 'default' }) => {
     return () => window.removeEventListener('auth:required', handleAuthRequired);
   }, []);
 
+  useEffect(() => {
+    if (!initialAuthMode || isAuthenticated) return;
+
+    try {
+      const notice = window.sessionStorage.getItem(AUTH_STORAGE_KEYS.sessionNotice);
+      if (notice) {
+        window.sessionStorage.removeItem(AUTH_STORAGE_KEYS.sessionNotice);
+        toast.error(notice, { id: 'session-expired', duration: 4000 });
+      }
+    } catch {
+      // The login modal remains available if storage is restricted.
+    }
+  }, [initialAuthMode, isAuthenticated]);
+
   const isHomeRoute = location.pathname === '/';
   const isHeroVariant = variant === 'hero' || isHomeRoute;
-  const isFixedNav = true;
   const shouldUseTransparentBg = isHeroVariant && !isScrolled;
   const shouldUseSolidBg = isScrolled || (!isHeroVariant && !shouldUseTransparentBg);
 
@@ -217,18 +231,18 @@ const Navbar = ({ variant = 'default' }) => {
         {role === 'CUSTOMER' && (
           <>
             <NavLink to="/my-bookings" className={linkClasses}>
-              <LayoutGrid size={16} />
-              <span>My bookings</span>
+              <LayoutGrid size={15} />
+              <span>Bookings</span>
             </NavLink>
             <NavLink to="/profile" className={linkClasses}>
-              <UserCircle size={16} />
+              <UserCircle size={15} />
               <span>Profile</span>
             </NavLink>
           </>
         )}
         {role !== 'CUSTOMER' && (
           <NavLink to={dashboardPath} className={linkClasses}>
-            <LayoutGrid size={16} />
+            <LayoutGrid size={15} />
             <span>Dashboard</span>
           </NavLink>
         )}
@@ -239,7 +253,7 @@ const Navbar = ({ variant = 'default' }) => {
   const renderGuestNav = () => (
     <>
       <nav className={`h-14 transition-all duration-300 md:h-16 ${navContainerClasses} ${shellClasses}`}>
-        <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-7">
           <NavLink to="/" className="flex items-center gap-2">
             <div className={`flex h-9 w-9 items-center justify-center rounded-full ${iconBadgeClasses}`}>
               <Sparkles size={18} />
@@ -250,10 +264,10 @@ const Navbar = ({ variant = 'default' }) => {
             </div>
           </NavLink>
 
-          <div className="hidden items-center gap-1 md:flex">
+          <div className="hidden items-center gap-0.5 lg:flex">
             {guestLinks.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} className={linkClasses}>
-                <Icon size={16} />
+                <Icon size={15} />
                 <span>{label}</span>
               </NavLink>
             ))}
@@ -261,7 +275,9 @@ const Navbar = ({ variant = 'default' }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <CurrencySwitcher buttonClassName={secondaryButtonClasses} />
+            <div className="hidden sm:block">
+              <CurrencySwitcher buttonClassName={secondaryButtonClasses} />
+            </div>
             {isAuthenticated ? (
               <>
                 {role === 'CUSTOMER' ? (
@@ -279,7 +295,7 @@ const Navbar = ({ variant = 'default' }) => {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${secondaryButtonClasses}`}
+                  className={`hidden cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition sm:inline-flex ${secondaryButtonClasses}`}
                 >
                   <LogOut size={16} />
                   Sign out
@@ -305,7 +321,7 @@ const Navbar = ({ variant = 'default' }) => {
                     setAuthMode('signup');
                     setAuthOpen(true);
                   }}
-                  className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${primaryButtonClasses}`}
+                  className={`hidden cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition sm:inline-flex ${primaryButtonClasses}`}
                 >
                   <LogIn size={16} />
                   Sign up
@@ -315,7 +331,7 @@ const Navbar = ({ variant = 'default' }) => {
 
             <button
               type="button"
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition md:hidden ${secondaryButtonClasses}`}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition lg:hidden ${secondaryButtonClasses}`}
               onClick={() => setMobileOpen(true)}
               aria-label="Open navigation menu"
             >
@@ -326,7 +342,7 @@ const Navbar = ({ variant = 'default' }) => {
       </nav>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-60 bg-black/30 md:hidden" onClick={() => setMobileOpen(false)}>
+        <div className="fixed inset-0 z-60 bg-black/30 lg:hidden" onClick={() => setMobileOpen(false)}>
           <div
             className={`ml-auto flex h-full w-4/5 max-w-sm flex-col p-4 shadow-xl ${drawerClasses}`}
             onClick={(event) => event.stopPropagation()}
@@ -346,6 +362,11 @@ const Navbar = ({ variant = 'default' }) => {
               >
                 <X size={18} />
               </button>
+            </div>
+
+            <div className={`mt-4 flex items-center justify-between rounded-2xl border px-3 py-2 sm:hidden ${shouldUseSolidBg ? 'border-gray-100 bg-gray-50' : 'border-white/20 bg-white/10'}`}>
+              <span className="text-sm font-medium">Display currency</span>
+              <CurrencySwitcher buttonClassName={secondaryButtonClasses} />
             </div>
 
             <div className="mt-4 flex flex-col gap-2">
@@ -426,13 +447,13 @@ const Navbar = ({ variant = 'default' }) => {
         onClose={() => {
           setAuthOpen(false);
           setAuthSuccessMessage('');
+          if (initialAuthMode) {
+            navigate('/', { replace: true });
+          }
         }}
         initialMode={authMode}
         onSubmit={handleAuthSubmit}
         onGoogleAuth={handleGoogleAuth}
-        onForgotPassword={() => {
-          console.info('Forgot password flow triggered');
-        }}
         successMessage={authSuccessMessage}
       />
     </>

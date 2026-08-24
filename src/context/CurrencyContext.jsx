@@ -6,7 +6,7 @@ const STORAGE_KEY = 'bmh_currency_pref';
 // frankfurter.app now 301-redirects to frankfurter.dev's versioned API; the redirect response
 // itself has no CORS header, so the browser blocks it before ever reaching the real endpoint.
 // Call the new host/path directly.
-const RATES_URL = 'https://api.frankfurter.dev/v1/latest?from=USD';
+const RATES_URL = 'https://api.frankfurter.dev/v1/latest?base=USD';
 const RATES_REFRESH_MS = 60 * 60 * 1000;
 const GEO_TIMEOUT_MS = 6000;
 const FETCH_TIMEOUT_MS = 5000;

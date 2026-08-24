@@ -34,6 +34,7 @@ const AuthModal = ({
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [otpDigits, setOtpDigits] = useState(Array(6).fill(''));
   const [otpEntryId, setOtpEntryId] = useState(null);
+  const [resetToken, setResetToken] = useState('');
   const [feedback, setFeedback] = useState({ type: '', message: '' });
   const inputRefs = useRef([]);
 
@@ -49,6 +50,7 @@ const AuthModal = ({
     setIsSubmitting(false);
     setOtpDigits(Array(6).fill(''));
     setOtpEntryId(null);
+    setResetToken('');
     setFeedback({ type: '', message: '' });
   }, [isOpen, initialMode]);
 
@@ -268,6 +270,10 @@ const AuthModal = ({
       });
 
       if (response?.success) {
+        if (!response?.resetToken) {
+          throw new Error('The server did not return a secure password-reset token. Please request a new code.');
+        }
+        setResetToken(response.resetToken);
         toast.success(response.message || 'OTP verified successfully.');
         setStep('reset');
         setMode('login');
@@ -300,6 +306,7 @@ const AuthModal = ({
         email: formData.email.trim(),
         newPassword: formData.password,
         confirmPassword: formData.confirmPassword,
+        resetToken,
       });
 
       if (response?.success || response?.message) {
@@ -308,6 +315,7 @@ const AuthModal = ({
         setStep('form');
         setMode('login');
         setFormData((current) => ({ ...current, password: '', confirmPassword: '' }));
+        setResetToken('');
         setErrors({});
       } else {
         setFeedback({ type: 'error', message: response?.message || 'Unable to reset password.' });

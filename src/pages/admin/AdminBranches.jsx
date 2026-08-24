@@ -44,7 +44,6 @@ const AdminBranches = () => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetching on hotel change, not a render-time reset
     loadBranches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelId]);
