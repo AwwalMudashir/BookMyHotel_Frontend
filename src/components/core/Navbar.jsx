@@ -9,7 +9,7 @@ import { AUTH_STORAGE_KEYS } from '../../utils/constants';
 
 const guestLinks = [
   { to: '/hotels', label: 'Hotels', icon: Hotel },
-  { to: '/search', label: 'Activities', icon: Compass },
+  { to: '/search', label: 'Rooms', icon: Compass },
   { to: '/packages', label: 'Packages', icon: Gift },
   { to: '/contact', label: 'Contact', icon: Mail },
 ];

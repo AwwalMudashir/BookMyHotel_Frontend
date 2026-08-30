@@ -30,6 +30,7 @@ const ManagerDashboard = () => {
   const [todayBookings, setTodayBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const managedHotelName = summary?.hotelName || user?.managedHotel?.name;
 
   useEffect(() => {
     let active = true;
@@ -63,7 +64,9 @@ const ManagerDashboard = () => {
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0A7C6E]">Hotel performance</p>
-            <h1 className="mt-2 font-[Playfair_Display] text-3xl font-semibold">{user?.managedHotel?.name || 'Manager dashboard'}</h1>
+            <h1 className="mt-2 max-w-3xl font-[Playfair_Display] text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
+              {managedHotelName ? `${managedHotelName} Dashboard` : 'Hotel Manager Dashboard'}
+            </h1>
             <p className="mt-1 text-sm text-slate-500">Analytics and operations for your assigned hotel only.</p>
           </div>
           <div className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">

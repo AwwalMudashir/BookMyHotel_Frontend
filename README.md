@@ -58,6 +58,6 @@ The following packages are included and are worth knowing about when working in 
 
 ## Notes for future contributors
 
-- The frontend expects the backend API to run at http://localhost:8080/api/v1.
-- Authentication tokens are stored in localStorage under the key bmh_token.
+- The frontend expects the backend API to run at http://localhost:6767/api/v1 by default. Override it with `VITE_API_BASE_URL` when required.
+- Authentication tokens use `bmh_token` and `bmh_refresh_token`. They are stored in localStorage when "Remember me" is selected and sessionStorage otherwise.
 - Role-based access is handled through the auth context and route guards.
