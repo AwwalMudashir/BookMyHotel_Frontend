@@ -1,9 +1,13 @@
 const isProd = import.meta.env.PROD;
 
 export const API_BASE_URL_DEV = 'http://localhost:6767/api/v1';
-// In production, use the same-origin reverse-proxy path unless VITE_API_BASE_URL is set.
-export const API_BASE_URL_PROD = '/api/v1';
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (isProd ? API_BASE_URL_PROD : API_BASE_URL_DEV);
+// Vercel does not proxy /api requests in this project, so the production fallback
+// must point at the deployed Render API. VITE_API_BASE_URL remains the preferred
+// build-time override for staging or a future custom backend domain.
+export const API_BASE_URL_PROD = 'https://backend-bookmyhotel.onrender.com/api/v1';
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || (isProd ? API_BASE_URL_PROD : API_BASE_URL_DEV)
+).replace(/\/+$/, '');
 export const API_ENV = import.meta.env.MODE || 'development';
 export const AUTH_STORAGE_KEYS = {
   token: 'bmh_token',
