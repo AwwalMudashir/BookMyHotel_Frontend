@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { X } from 'lucide-react';
 import { DEFAULT_COUNTRY, findCountryConfig, countryCurrencyConfig } from '../utils/countryCurrency';
 
 const STORAGE_KEY = 'bmh_currency_pref';
@@ -10,8 +11,35 @@ const RATES_URL = 'https://api.frankfurter.dev/v1/latest?base=USD';
 const RATES_REFRESH_MS = 60 * 60 * 1000;
 const GEO_TIMEOUT_MS = 6000;
 const FETCH_TIMEOUT_MS = 5000;
+const CURRENCY_TOAST_DURATION_MS = 3500;
 
 const CurrencyContext = createContext(null);
+
+const showUnavailableRateToast = (currencyCode) => {
+  toast.error(
+    (activeToast) => (
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="min-w-0 flex-1 leading-5">
+          Exchange rates for {currencyCode} are unavailable. Prices have been switched to USD.
+        </span>
+        <button
+          type="button"
+          onClick={() => toast.dismiss(activeToast.id)}
+          className="-mr-1 -mt-1 shrink-0 cursor-pointer rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0A7C6E]"
+          aria-label="Dismiss currency notification"
+        >
+          <X size={17} aria-hidden="true" />
+        </button>
+      </div>
+    ),
+    {
+      id: 'currency-rate-fallback',
+      duration: CURRENCY_TOAST_DURATION_MS,
+      position: 'top-right',
+      style: { maxWidth: 'min(420px, calc(100vw - 2rem))' },
+    },
+  );
+};
 
 const readStoredPreference = () => {
   if (typeof window === 'undefined') return null;
@@ -134,10 +162,7 @@ export const CurrencyProvider = ({ children }) => {
     persistPreference(nextConfig.code, nextConfig.currency);
 
     if (rateUnavailable && notifyOnFallback) {
-      toast.error(`Exchange rates for ${requestedConfig.currency} are unavailable. Prices have been switched to USD.`, {
-        id: 'currency-rate-fallback',
-        duration: 4000,
-      });
+      showUnavailableRateToast(requestedConfig.currency);
     }
   }, []);
 
